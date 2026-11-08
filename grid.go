@@ -17,8 +17,9 @@ const (
 
 // Track describes a Grid row height or column width.
 type Track struct {
-	kind  trackKind
-	value float32
+	kind       trackKind
+	value      float32
+	sizeSignal *Signal[float32]
 }
 
 // Auto sizes a track to the largest child measured in it.
@@ -26,6 +27,20 @@ func Auto() Track { return Track{} }
 
 // Fixed reserves a track size in logical pixels.
 func Fixed(size float32) Track { return Track{kind: fixedTrack, value: max(0, size)} }
+
+// FixedFrom creates a fixed track whose size can be changed on the UI thread.
+func FixedFrom(size *Signal[float32]) Track { return Track{kind: fixedTrack, sizeSignal: size} }
+
+func (t Track) fixedSize() float32 {
+	if t.sizeSignal == nil {
+		return t.value
+	}
+	value := t.sizeSignal.Get()
+	if math.IsNaN(float64(value)) || math.IsInf(float64(value), 0) {
+		return 0
+	}
+	return max(0, value)
+}
 
 // Star allocates a weighted share of the remaining space.
 func Star(weight float32) Track { return Track{kind: starTrack, value: max(0, weight)} }
@@ -74,6 +89,27 @@ type gridLayout struct {
 	rowContent, colContent []float32
 }
 
+func (g *gridLayout) bindLayout(owner *component, pending subscriptions) *binding {
+	for _, tracks := range [][]Track{g.rows, g.columns} {
+		for _, track := range tracks {
+			if track.sizeSignal != nil {
+				update := &binding{pending: pending, dependencies: make(map[*subscriptions]struct{}),
+					evaluate: func() {
+						for _, group := range [][]Track{g.rows, g.columns} {
+							for _, item := range group {
+								item.fixedSize()
+							}
+						}
+						owner.invalidateMeasure()
+					},
+				}
+				update.evaluateTracked()
+				return update
+			}
+		}
+	}
+	return nil
+}
 func (g *gridLayout) measure(children []*component, available rl.Vector2, text measureText) rl.Vector2 {
 	g.colContent = make([]float32, len(g.columns))
 	g.rowContent = make([]float32, len(g.rows))
@@ -112,7 +148,7 @@ func probeSpan(tracks []Track) float32 {
 		if track.kind != fixedTrack {
 			return float32(math.Inf(1))
 		}
-		size += track.value
+		size += track.fixedSize()
 	}
 	return size
 }
@@ -132,7 +168,7 @@ func growTracks(tracks []Track, content []float32, needs []trackNeed, available 
 			track := tracks[i]
 			switch {
 			case track.kind == fixedTrack:
-				current += track.value
+				current += track.fixedSize()
 			case track.kind == autoTrack || (unbounded && track.kind == starTrack && track.value > 0):
 				current += content[i]
 				eligible = append(eligible, i)
@@ -162,7 +198,7 @@ func allocateTracks(tracks []Track, content []float32, available float32) ([]flo
 	for i, track := range tracks {
 		switch track.kind {
 		case fixedTrack:
-			sizes[i] = track.value
+			sizes[i] = track.fixedSize()
 		case autoTrack:
 			sizes[i] = content[i]
 		case starTrack:

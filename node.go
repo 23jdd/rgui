@@ -170,6 +170,10 @@ func (c *component) mount(pending subscriptions) {
 		c.boundText.evaluateTracked()
 	} else if custom, ok := c.custom.(interface{ bind(subscriptions) *binding }); ok {
 		c.boundText = custom.bind(pending)
+	} else if panel, ok := c.panel.(interface {
+		bindLayout(*component, subscriptions) *binding
+	}); ok {
+		c.boundText = panel.bindLayout(c, pending)
 	}
 	for _, child := range c.children {
 		if child.pending == nil {
