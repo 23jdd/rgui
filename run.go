@@ -114,6 +114,7 @@ func Run(config WindowConfig, view func() Node) error {
 			hovered = nearestButton(hit)
 			mouseDown := rl.IsMouseButtonPressed(rl.MouseButtonLeft)
 			if mouseDown {
+				dismissPopups(root, hit, false)
 				if !input.pointer(PointerDown, hit, mouse, rl.Vector2{}) {
 					if hit != nil && hit.pending == nil {
 						hit, hovered = nil, nil
@@ -142,7 +143,7 @@ func Run(config WindowConfig, view func() Node) error {
 			if rl.IsMouseButtonReleased(rl.MouseButtonRight) {
 				input.secondary(PointerUp, hit, mouse)
 			}
-			if focus.readKeyboard(root, viewport, imeBusy) {
+			if focus.readKeyboard(root, viewport, imeBusy) && !dismissPopups(root, nil, true) {
 				break
 			}
 		} else {

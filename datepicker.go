@@ -30,5 +30,5 @@ func DatePicker(selected *Signal[time.Time]) Node {
 	content := Border(calendar(selected, month, func() { open.Set(false) }), BorderStyle{
 		Background: rl.NewColor(34, 41, 54, 255), BorderColor: rl.Gray, Thickness: 1, Padding: UniformInsets(4),
 	})
-	return StackPanel(Vertical, 0, button, Popup(WithLayout(content, Box{MinWidth: 252}), open))
+	return StackPanel(Vertical, 0, button, transientPopup(WithLayout(content, Box{MinWidth: 252}), open, button, nil))
 }

@@ -25,7 +25,44 @@ func Popup(content Node, open *Signal[bool]) Node {
 	return node
 }
 
-type popupLayout struct{ owner *component }
+type popupLayout struct {
+	owner  *component
+	anchor func() rl.Vector2
+	open   *Signal[bool]
+	opener *component
+}
+
+func transientPopup(content Node, open *Signal[bool], opener Node, anchor func() rl.Vector2) Node {
+	node := componentOf(Popup(content, open))
+	node.panel = popupLayout{owner: node, anchor: anchor, open: open, opener: componentOf(opener)}
+	return node
+}
+
+func dismissPopups(root, hit *component, escape bool) bool {
+	layers := popupLayers(root, nil)
+	dismissed := false
+	for i := len(layers) - 1; i >= 0; i-- {
+		layout := layers[i].panel.(popupLayout)
+		if layout.open == nil || !layout.open.Get() {
+			continue
+		}
+		keep := false
+		for node := hit; node != nil; node = node.parent {
+			if node == layers[i] || node == layout.opener {
+				keep = true
+				break
+			}
+		}
+		if !keep || escape {
+			layout.open.Set(false)
+			dismissed = true
+			if escape {
+				break
+			}
+		}
+	}
+	return dismissed
+}
 
 func (p popupLayout) measure(children []*component, available rl.Vector2, text measureText) rl.Vector2 {
 	if len(children) != 0 {
@@ -44,6 +81,10 @@ func (p popupLayout) arrange(children []*component, area rl.Rectangle) {
 	}
 	viewport := root.bounds
 	child := children[0]
+	if p.anchor != nil {
+		point := p.anchor()
+		area.X, area.Y, area.Width = point.X, point.Y, 0
+	}
 	width := min(viewport.Width, max(area.Width, child.desired.X))
 	height := min(viewport.Height, child.desired.Y)
 	x := max(viewport.X, min(area.X, viewport.X+viewport.Width-width))

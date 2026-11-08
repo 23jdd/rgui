@@ -36,5 +36,5 @@ func ComboBox(items []string, selected *Signal[int]) Node {
 	}
 	content := Border(ScrollViewer(StackPanel(Vertical, 2, rows...), nil, false, true),
 		BorderStyle{Background: rl.NewColor(34, 41, 54, 255), BorderColor: rl.Gray, Thickness: 1, Padding: UniformInsets(4)})
-	return StackPanel(Vertical, 0, trigger, Popup(content, open))
+	return StackPanel(Vertical, 0, trigger, transientPopup(content, open, trigger, nil))
 }
