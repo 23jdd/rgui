@@ -39,7 +39,7 @@ type TextLayout struct {
 func TextBlock(text string, width, lineGap float32, style TextStyle) TextLayout {
 	measure := func(line string) float32 { return MeasureText(line, style).X }
 	layout := TextLayout{
-		lines: wrapText(text, width, measure), style: style,
+		lines: WrapLines(text, width, measure), style: style,
 		lineHeight: style.Size + max(0, lineGap),
 	}
 	for _, line := range layout.lines {
@@ -60,7 +60,9 @@ func (layout TextLayout) Draw(at rl.Vector2) {
 	}
 }
 
-func wrapText(text string, width float32, measure func(string) float32) []string {
+// WrapLines breaks text at whitespace or rune boundaries using the supplied
+// width metric. A nonpositive width only honors explicit line breaks.
+func WrapLines(text string, width float32, measure func(string) float32) []string {
 	paragraphs := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
 	if width <= 0 {
 		return paragraphs

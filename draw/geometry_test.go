@@ -42,7 +42,7 @@ func TestDashContinuesAcrossSegments(t *testing.T) {
 }
 
 func TestWrapTextPreservesNewlinesAndUnicode(t *testing.T) {
-	got := wrapText("one two three\r\n\n中文换行", 7, func(s string) float32 {
+	got := WrapLines("one two three\r\n\n中文换行", 7, func(s string) float32 {
 		var width float32
 		for _, ch := range s {
 			width++
