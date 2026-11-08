@@ -43,6 +43,7 @@ type Box struct {
 	MaxWidth, MaxHeight                    float32
 	Margin, Padding                        Insets
 	HorizontalAlignment, VerticalAlignment Alignment
+	ClipToBounds                           bool
 }
 
 // WithLayout attaches layout options to a built-in or custom node.
@@ -144,7 +145,8 @@ func (c *component) measure(available rl.Vector2, text measureText) rl.Vector2 {
 	y := layoutLimits(box.Height, box.MinHeight, box.MaxHeight)
 	width := x.clamp(available.X - box.Margin.Left - box.Margin.Right)
 	height := y.clamp(available.Y - box.Margin.Top - box.Margin.Bottom)
-	content := inset(rl.Rectangle{Width: width, Height: height}, box.Padding)
+	padding := c.contentInsets(box)
+	content := inset(rl.Rectangle{Width: width, Height: height}, padding)
 	var desired rl.Vector2
 	if c.custom != nil {
 		desired = c.custom.Measure(MeasureContext{
@@ -169,8 +171,8 @@ func (c *component) measure(available rl.Vector2, text measureText) rl.Vector2 {
 			desired.Y = max(desired.Y, rowHeight)
 		}
 	}
-	desired.X += box.Padding.Left + box.Padding.Right
-	desired.Y += box.Padding.Top + box.Padding.Bottom
+	desired.X += padding.Left + padding.Right
+	desired.Y += padding.Top + padding.Bottom
 	desired.X = max(0, x.clamp(desired.X)+box.Margin.Left+box.Margin.Right)
 	desired.Y = max(0, y.clamp(desired.Y)+box.Margin.Top+box.Margin.Bottom)
 	c.desired = desired
@@ -197,11 +199,11 @@ func (c *component) arrange(slot rl.Rectangle) {
 	area.Y, area.Height = align(area.Y, area.Height, height, y, box.VerticalAlignment)
 	c.BaseNode.Place(area)
 	if c.panel != nil {
-		c.panel.arrange(c.children, inset(area, box.Padding))
+		c.panel.arrange(c.children, c.contentBounds())
 	}
 	if c.custom != nil {
 		c.layoutBase().slot = slot
-		c.custom.Place(inset(area, box.Padding))
+		c.custom.Place(c.contentBounds())
 	}
 }
 

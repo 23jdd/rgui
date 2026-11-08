@@ -32,8 +32,9 @@ func Star(weight float32) Track { return Track{kind: starTrack, value: max(0, we
 
 // Cell places one child in a zero-based row and column.
 type Cell struct {
-	Row, Column int
-	Child       Node
+	Row, Column         int
+	RowSpan, ColumnSpan int // Zero means one track.
+	Child               Node
 }
 
 // Grid arranges cells on explicit tracks. An empty axis has one Star(1) track.
@@ -42,11 +43,20 @@ func Grid(rows, columns []Track, cells ...Cell) Node {
 	g := &gridLayout{rows: gridTracks(rows), columns: gridTracks(columns)}
 	children := make([]Node, 0, len(cells))
 	for _, cell := range cells {
-		if cell.Row < 0 || cell.Row >= len(g.rows) || cell.Column < 0 || cell.Column >= len(g.columns) {
+		if cell.RowSpan == 0 {
+			cell.RowSpan = 1
+		}
+		if cell.ColumnSpan == 0 {
+			cell.ColumnSpan = 1
+		}
+		if cell.Row < 0 || cell.Row >= len(g.rows) || cell.Column < 0 || cell.Column >= len(g.columns) ||
+			cell.RowSpan < 1 || cell.RowSpan > len(g.rows)-cell.Row ||
+			cell.ColumnSpan < 1 || cell.ColumnSpan > len(g.columns)-cell.Column {
 			panic("rgui: grid cell is outside the defined tracks")
 		}
-		g.positions = append(g.positions, [2]int{cell.Row, cell.Column})
 		children = append(children, cell.Child)
+		cell.Child = nil
+		g.positions = append(g.positions, cell)
 	}
 	return panel(g, children)
 }
@@ -60,37 +70,89 @@ func gridTracks(tracks []Track) []Track {
 
 type gridLayout struct {
 	rows, columns          []Track
-	positions              [][2]int
+	positions              []Cell
 	rowContent, colContent []float32
 }
 
 func (g *gridLayout) measure(children []*component, available rl.Vector2, text measureText) rl.Vector2 {
 	g.colContent = make([]float32, len(g.columns))
 	g.rowContent = make([]float32, len(g.rows))
+	columnNeeds := make([]trackNeed, len(children))
+	rowNeeds := make([]trackNeed, len(children))
 	for i, child := range children {
-		row, col := g.positions[i][0], g.positions[i][1]
-		size := child.measure(rl.Vector2{X: g.columns[col].probe(), Y: g.rows[row].probe()}, text)
-		g.colContent[col] = max(g.colContent[col], size.X)
+		cell := g.positions[i]
+		size := child.measure(rl.Vector2{
+			X: probeSpan(g.columns[cell.Column : cell.Column+cell.ColumnSpan]),
+			Y: probeSpan(g.rows[cell.Row : cell.Row+cell.RowSpan]),
+		}, text)
+		columnNeeds[i] = trackNeed{cell.Column, cell.ColumnSpan, size.X}
 	}
+	growTracks(g.columns, g.colContent, columnNeeds, available.X)
 	columns, width := allocateTracks(g.columns, g.colContent, available.X)
 	for i, child := range children {
-		row, col := g.positions[i][0], g.positions[i][1]
-		size := child.measure(rl.Vector2{X: columns[col], Y: g.rows[row].probe()}, text)
-		g.rowContent[row] = max(g.rowContent[row], size.Y)
+		cell := g.positions[i]
+		size := child.measure(rl.Vector2{
+			X: trackSpan(columns, cell.Column, cell.ColumnSpan),
+			Y: probeSpan(g.rows[cell.Row : cell.Row+cell.RowSpan]),
+		}, text)
+		rowNeeds[i] = trackNeed{cell.Row, cell.RowSpan, size.Y}
 	}
+	growTracks(g.rows, g.rowContent, rowNeeds, available.Y)
 	rows, height := allocateTracks(g.rows, g.rowContent, available.Y)
 	for i, child := range children {
-		row, col := g.positions[i][0], g.positions[i][1]
-		child.measure(rl.Vector2{X: columns[col], Y: rows[row]}, text)
+		cell := g.positions[i]
+		child.measure(rl.Vector2{X: trackSpan(columns, cell.Column, cell.ColumnSpan), Y: trackSpan(rows, cell.Row, cell.RowSpan)}, text)
 	}
 	return rl.Vector2{X: width, Y: height}
 }
 
-func (t Track) probe() float32 {
-	if t.kind == fixedTrack {
-		return t.value
+func probeSpan(tracks []Track) float32 {
+	var size float32
+	for _, track := range tracks {
+		if track.kind != fixedTrack {
+			return float32(math.Inf(1))
+		}
+		size += track.value
 	}
-	return float32(math.Inf(1))
+	return size
+}
+
+type trackNeed struct {
+	start, span int
+	size        float32
+}
+
+func growTracks(tracks []Track, content []float32, needs []trackNeed, available float32) {
+	unbounded := math.IsInf(float64(available), 1)
+	slices.SortStableFunc(needs, func(a, b trackNeed) int { return a.span - b.span })
+	for _, need := range needs {
+		var current float32
+		var eligible []int
+		for i := need.start; i < need.start+need.span; i++ {
+			track := tracks[i]
+			switch {
+			case track.kind == fixedTrack:
+				current += track.value
+			case track.kind == autoTrack || (unbounded && track.kind == starTrack && track.value > 0):
+				current += content[i]
+				eligible = append(eligible, i)
+			}
+		}
+		if need.size > current && len(eligible) != 0 {
+			extra := (need.size - current) / float32(len(eligible))
+			for _, i := range eligible {
+				content[i] += extra
+			}
+		}
+	}
+}
+
+func trackSpan(sizes []float32, start, span int) float32 {
+	var size float32
+	for _, track := range sizes[start : start+span] {
+		size += track
+	}
+	return size
 }
 
 func allocateTracks(tracks []Track, content []float32, available float32) ([]float32, float32) {
@@ -129,8 +191,11 @@ func (g *gridLayout) arrange(children []*component, area rl.Rectangle) {
 	columns, _ := allocateTracks(g.columns, g.colContent, area.Width)
 	x, y := trackOffsets(columns, area.X), trackOffsets(rows, area.Y)
 	for i, child := range children {
-		row, col := g.positions[i][0], g.positions[i][1]
-		child.arrange(rl.Rectangle{X: x[col], Y: y[row], Width: columns[col], Height: rows[row]})
+		cell := g.positions[i]
+		child.arrange(rl.Rectangle{
+			X: x[cell.Column], Y: y[cell.Row],
+			Width: trackSpan(columns, cell.Column, cell.ColumnSpan), Height: trackSpan(rows, cell.Row, cell.RowSpan),
+		})
 	}
 }
 

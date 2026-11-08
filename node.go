@@ -61,7 +61,8 @@ type MeasureContext struct {
 
 // PaintContext supplies the window's default font.
 type PaintContext struct {
-	Font rl.Font
+	Font   rl.Font
+	canvas *draw.Canvas
 
 	hovered, pressed, focused bool
 }
@@ -107,6 +108,7 @@ type component struct {
 	panel                    panelLayout
 	legacy                   bool
 	custom                   Node
+	decoration               *BorderStyle
 }
 
 func (c *component) layoutBase() *BaseNode {
@@ -190,26 +192,45 @@ func (c *component) buttonAt(point rl.Vector2) *component {
 }
 
 func (c *component) draw(font rl.Font, hovered, pressed, focused *component) {
-	if c.custom != nil || c.panel == nil {
-		c.drawSelf(font, hovered, pressed, focused)
+	var canvas draw.Canvas
+	c.paint(&canvas, font, hovered, pressed, focused)
+}
+
+func (c *component) paint(canvas *draw.Canvas, font rl.Font, hovered, pressed, focused *component) {
+	if c.custom != nil || c.panel == nil || c.decoration != nil {
+		c.drawSelf(canvas, font, hovered, pressed, focused)
 	}
-	for _, child := range c.children {
-		child.draw(font, hovered, pressed, focused)
+	if len(c.children) == 0 {
+		return
+	}
+	children := func() {
+		for _, child := range c.children {
+			child.paint(canvas, font, hovered, pressed, focused)
+		}
+	}
+	if c.measuredBox.ClipToBounds {
+		canvas.Clip(c.contentBounds(), children)
+	} else {
+		children()
 	}
 }
 
-func (c *component) drawSelf(font rl.Font, hovered, pressed, focused *component) {
+func (c *component) contentBounds() rl.Rectangle {
+	return inset(c.bounds, c.contentInsets(c.measuredBox))
+}
+
+func (c *component) drawSelf(canvas *draw.Canvas, font rl.Font, hovered, pressed, focused *component) {
 	if c.bounds.Width <= 0 || c.bounds.Height <= 0 {
 		return
 	}
 	ctx := PaintContext{
 		Font:    font,
+		canvas:  canvas,
 		hovered: c == hovered, pressed: c == pressed, focused: c == focused,
 	}
 	primitives := c.Primitives(ctx)
 	if c.custom != nil {
-		var canvas draw.Canvas
-		canvas.Clip(inset(c.bounds, c.measuredBox.Padding), func() { draw.Render(primitives) })
+		canvas.Clip(c.contentBounds(), func() { draw.Render(primitives) })
 		return
 	}
 	draw.Render(primitives)
@@ -218,6 +239,14 @@ func (c *component) drawSelf(font rl.Font, hovered, pressed, focused *component)
 func (c *component) Primitives(ctx PaintContext) []draw.Primitive {
 	if c.custom != nil {
 		return c.custom.Primitives(ctx)
+	}
+	if c.decoration != nil {
+		style := c.decoration
+		return []draw.Primitive{
+			draw.RectPrimitive{Bounds: c.bounds, Radius: style.Radius, Style: draw.Style{Fill: style.Background}},
+			draw.RectPrimitive{Bounds: inset(c.bounds, UniformInsets(style.Thickness/2)), Radius: max(0, style.Radius-style.Thickness/2),
+				Style: draw.Style{Stroke: draw.Stroke{Color: style.BorderColor, Width: style.Thickness}}},
+		}
 	}
 	if c.panel != nil {
 		return nil
@@ -243,7 +272,7 @@ func (c *component) Primitives(ctx PaintContext) []draw.Primitive {
 			})
 		}
 	}
-	content := inset(c.bounds, c.measuredBox.Padding)
+	content := c.contentBounds()
 	size := draw.MeasureText(c.text, style)
 	text := draw.TextPrimitive{
 		Position: rl.Vector2{
@@ -256,7 +285,10 @@ func (c *component) Primitives(ctx PaintContext) []draw.Primitive {
 		return append(primitives, text)
 	}
 	return append(primitives, draw.PrimitiveFunc(func() {
-		var canvas draw.Canvas
+		canvas := ctx.canvas
+		if canvas == nil {
+			canvas = &draw.Canvas{}
+		}
 		canvas.Clip(content, text.Draw)
 	}))
 }

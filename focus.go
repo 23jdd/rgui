@@ -66,7 +66,7 @@ func (c *component) focusable(viewport rl.Vector2) bool {
 	if !c.inputEnabled() || (!c.enabledButton() && !c.layoutBase().Input.Focusable) {
 		return false
 	}
-	b := c.bounds
+	b := visibleBounds(c)
 	return b.Width > 0 && b.Height > 0 &&
 		b.X < viewport.X && b.Y < viewport.Y && b.X+b.Width > 0 && b.Y+b.Height > 0
 }

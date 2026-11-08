@@ -113,7 +113,7 @@ go run ./examples/primitives
 | 3. 补充面板 | `DockPanel`、`WrapPanel`，按示例验证 | Dock 布局中的工具栏贴边，主区域填满剩余空间。Wrap 布局随窗口变窄换行。 |
 
 - **StackPanel** 在排列轴上按内容测量子节点，横轴按父容器可用空间安排。带权重的剩余空间分配放在 Grid。[WPF StackPanel 与 DockPanel 比较](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/controls/how-to-choose-between-stackpanel-and-dockpanel)
-- **Grid** 首批支持单单元格定位。固定轨道先预留，`Auto` 轨道取该轨道内子节点所需尺寸的最大值，`Star` 轨道按权重分配非负剩余空间。跨行、跨列留到后续。首版用窗口裁剪布局溢出，绘制和命中采用相同边界。[WPF Grid 自动布局](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/how-to-use-a-grid-for-automatic-layout)
+- **Grid** 支持 `RowSpan` 和 `ColumnSpan`。固定轨道先预留，`Auto` 轨道按内容增长，`Star` 轨道按权重分配非负剩余空间。[WPF Grid 自动布局](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/how-to-use-a-grid-for-automatic-layout)
 - **Signal 与布局**。文本绑定更新导致期望尺寸变化时，在绘制前重新测量和排列受影响的布局。窗口尺寸变化时，在处理鼠标命中前刷新布局。首版允许重算整棵树，按节点缓存测量结果留到后续。
 
 第一批提供 `StackPanel(Vertical, gap, children...)` 和 `StackPanel(Horizontal, gap, children...)`。用 `WithLayout(node, Box{...})` 设置宽高、外边距、内边距和两个方向的对齐。宽高为零时按内容测量，默认对齐为拉伸。`Stack` 保留原有的固定行高和根容器宽度。
@@ -180,6 +180,8 @@ type Node interface {
 用 `BaseNode.Input` 或 `WithInput(node, options)` 注册输入处理。事件先预览再冒泡，设置 `Handled` 可停止后续处理和默认动作。鼠标捕获通过 `InputEvent.CapturePointer()` 请求，释放鼠标、移除节点或窗口失焦时自动结束。Tab 按 `TabIndex` 和声明顺序导航，负值跳过 Tab。
 
 布局复用约束和属性未变化的节点结果。对齐变化只使放置失效，尺寸变化同时使测量失效。直接修改 `Box` 仍会被框架检测；自定义节点的内容尺寸改变时可调用 `BaseNode.InvalidateMeasure()`。
+
+运行 `go run ./examples/panels` 查看 `Border`、边缘锚点 `Canvas`、混合轨道跨列和嵌套裁剪。设置 `Box.ClipToBounds` 会用容器的内容矩形裁剪子节点的绘制和命中；圆角属于边框外观。
 
 ## 每次改动的工作流
 

@@ -99,17 +99,37 @@ func hitNode(c *component, point rl.Vector2) *component {
 	if options.HitTestInvisible {
 		return nil
 	}
-	if !options.Disabled {
+	if !options.Disabled && (!c.measuredBox.ClipToBounds || containsPoint(c.contentBounds(), point)) {
 		for i := len(c.children) - 1; i >= 0; i-- {
 			if hit := hitNode(c.children[i], point); hit != nil {
 				return hit
 			}
 		}
 	}
-	if c.bounds.Width > 0 && c.bounds.Height > 0 && rl.CheckCollisionPointRec(point, c.bounds) {
+	if containsPoint(c.bounds, point) {
 		return c
 	}
 	return nil
+}
+
+func containsPoint(bounds rl.Rectangle, point rl.Vector2) bool {
+	return bounds.Width > 0 && bounds.Height > 0 && point.X >= bounds.X && point.Y >= bounds.Y &&
+		point.X < bounds.X+bounds.Width && point.Y < bounds.Y+bounds.Height
+}
+
+func visibleBounds(c *component) rl.Rectangle {
+	bounds := c.bounds
+	for node := c.parent; node != nil; node = node.parent {
+		if node.measuredBox.ClipToBounds {
+			bounds = intersectRect(bounds, node.contentBounds())
+		}
+	}
+	return bounds
+}
+
+func intersectRect(a, b rl.Rectangle) rl.Rectangle {
+	x, y := max(a.X, b.X), max(a.Y, b.Y)
+	return rl.Rectangle{X: x, Y: y, Width: max(0, min(a.X+a.Width, b.X+b.Width)-x), Height: max(0, min(a.Y+a.Height, b.Y+b.Height)-y)}
 }
 
 func routeEvent(target *component, event *InputEvent) {
