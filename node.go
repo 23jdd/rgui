@@ -192,6 +192,9 @@ func (c *component) unmount() {
 		c.boundText.dispose()
 		c.boundText = nil
 	}
+	if resource, ok := c.custom.(interface{ release() }); ok {
+		resource.release()
+	}
 	c.pending = nil
 }
 
