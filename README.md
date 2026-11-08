@@ -104,7 +104,9 @@ go run ./examples/primitives
 
 第一批提供 `StackPanel(Vertical, gap, children...)` 和 `StackPanel(Horizontal, gap, children...)`。用 `node.WithLayout(Box{...})` 设置宽高、外边距、内边距和两个方向的对齐。宽高为零时按内容测量，默认对齐为拉伸。`Stack` 保留原有的固定行高和根容器宽度。
 
-布局算法用无需打开窗口的测试验证，窗口缩放和命中行为用第二批的 `examples/layout` 工具栏验证。
+第二批用 `Grid(rows, columns, cells...)` 指定行列轨道和子节点，`Cell.Row` 和 `Cell.Column` 从零开始。轨道用 `Fixed(pixels)`、`Auto()` 或 `Star(weight)` 定义。沿未限制尺寸的轴，正权重的 `Star` 轨道按内容测量。
+
+布局算法用无需打开窗口的测试验证。运行 `go run ./examples/layout` 查看可缩放工具栏和 1:2 权重分配。
 
 ## 每次改动的工作流
 
