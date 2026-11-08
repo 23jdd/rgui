@@ -181,6 +181,11 @@ type Node interface {
 
 `PreviewInputHandler` 在根到目标的预览阶段执行，具体事件方法在目标到根的冒泡阶段执行。设置 `Handled` 可停止后续处理和默认动作。通过 `InputEvent.CapturePointer()` 请求捕获，释放鼠标、移除节点或窗口失焦时自动结束。`BaseNode.Input` 和 `WithInput` 用于配置禁用、命中和 Tab 顺序。Tab 按 `TabIndex` 和声明顺序导航，负值跳过 Tab。
 
+- `PointerEnterHandler` / `PointerLeaveHandler` 直接通知指针路径上进入或离开的节点。指针捕获期间仍按实际命中位置更新。
+- `Tappable` / `SecondaryTappable` 在鼠标主键或右键于同一目标按下并释放时触发。原始指针事件的 `Button` 字段可区分两键。指针捕获由主键操作控制。
+- `TextInputHandler` 从焦点接收 raylib 提交的 Unicode 字符，文本位于 `InputEvent.Text`。IME 预编辑和候选窗需要独立接入。
+- `KeyRepeatHandler` 接收系统按键重复，和初次按下分开派发，内置按钮的默认激活只执行一次。
+
 布局复用约束和属性未变化的节点结果。对齐变化只使放置失效，尺寸变化同时使测量失效。直接修改 `Box` 仍会被框架检测；自定义节点的内容尺寸改变时可调用 `BaseNode.InvalidateMeasure()`。
 
 运行 `go run ./examples/panels` 查看 `Border`、边缘锚点 `Canvas`、混合轨道跨列和嵌套裁剪。设置 `Box.ClipToBounds` 会用容器的内容矩形裁剪子节点的绘制和命中；圆角属于边框外观。

@@ -100,3 +100,59 @@ func TestPreviewCancellationAndInterfaceFocus(t *testing.T) {
 		t.Fatal("TabIndex or FocusLost did not work")
 	}
 }
+
+type interactionNode struct {
+	BaseNode
+	hover    []EventKind
+	taps     []PointerButton
+	text     string
+	repeated []int32
+}
+
+func (n *interactionNode) PointerEnter(e *InputEvent)    { n.hover = append(n.hover, e.Kind) }
+func (n *interactionNode) PointerLeave(e *InputEvent)    { n.hover = append(n.hover, e.Kind) }
+func (n *interactionNode) Tapped(e *InputEvent)          { n.taps = append(n.taps, e.Button) }
+func (n *interactionNode) SecondaryTapped(e *InputEvent) { n.taps = append(n.taps, e.Button) }
+func (n *interactionNode) TextInput(e *InputEvent)       { n.text += e.Text }
+func (n *interactionNode) KeyRepeat(e *InputEvent)       { n.repeated = append(n.repeated, e.Key) }
+
+func TestHoverAndClickInterfaces(t *testing.T) {
+	parent, left, right := &interactionNode{}, &interactionNode{}, &interactionNode{}
+	root := componentOf(WithChildren(parent, StackPanel(Horizontal, 0, left, right)))
+	root.mount(make(subscriptions))
+	defer root.unmount()
+	var router inputRouter
+	a, b := componentOf(left), componentOf(right)
+	point := rl.Vector2{X: 10, Y: 10}
+	router.updateHover(a, point)
+	router.updateHover(b, point)
+	router.updateHover(b, point)
+	router.updateHover(nil, point)
+	for _, node := range []*interactionNode{parent, left, right} {
+		if !slices.Equal(node.hover, []EventKind{PointerEnter, PointerLeave}) {
+			t.Fatalf("hover events = %v", node.hover)
+		}
+	}
+	router.pointer(PointerDown, a, point, rl.Vector2{})
+	router.secondary(PointerDown, a, point)
+	router.secondary(PointerUp, a, point)
+	router.pointer(PointerUp, a, point, rl.Vector2{})
+	router.pointer(PointerDown, a, point, rl.Vector2{})
+	router.pointer(PointerUp, b, point, rl.Vector2{})
+	router.secondary(PointerDown, a, point)
+	router.secondary(PointerUp, b, point)
+	if !slices.Equal(left.taps, []PointerButton{SecondaryButton, PrimaryButton}) || len(right.taps) != 0 {
+		t.Fatalf("left taps = %v, right taps = %v", left.taps, right.taps)
+	}
+}
+
+func TestTextAndRepeatDispatchSeparately(t *testing.T) {
+	node := &interactionNode{}
+	target := componentOf(node)
+	routeEvent(target, &InputEvent{Kind: KeyDown, Key: rl.KeyA})
+	routeEvent(target, &InputEvent{Kind: TextInput, Text: "中"})
+	routeEvent(target, &InputEvent{Kind: KeyRepeat, Key: rl.KeyBackspace})
+	if node.text != "中" || !slices.Equal(node.repeated, []int32{rl.KeyBackspace}) {
+		t.Fatalf("text = %q, repeated keys = %v", node.text, node.repeated)
+	}
+}

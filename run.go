@@ -100,6 +100,10 @@ func Run(config WindowConfig, view func() Node) error {
 				focus.set(nil)
 			}
 			hit := hitWindow(root, mouse, viewport)
+			input.updateHover(hit, mouse)
+			if hit != nil && hit.pending == nil {
+				hit = nil
+			}
 			hovered = nearestButton(hit)
 			mouseDown := rl.IsMouseButtonPressed(rl.MouseButtonLeft)
 			if mouseDown {
@@ -125,12 +129,19 @@ func Run(config WindowConfig, view func() Node) error {
 					click.update(hovered, false, true)
 				}
 			}
+			if rl.IsMouseButtonPressed(rl.MouseButtonRight) {
+				input.secondary(PointerDown, hit, mouse)
+			}
+			if rl.IsMouseButtonReleased(rl.MouseButtonRight) {
+				input.secondary(PointerUp, hit, mouse)
+			}
 			focus.readKeyboard(root, viewport)
 		} else {
 			click.pressed = nil
 			focus.cancelPress()
 			focus.keys = nil
 			input.cancel()
+			input.updateHover(nil, mouse)
 		}
 		bindingsChanged := len(pending) > 0
 		flushBindings(pending)
@@ -139,7 +150,9 @@ func Run(config WindowConfig, view func() Node) error {
 		if bindingsChanged || root.layoutChanged() {
 			updateLayout(viewport)
 			if active {
-				hovered = windowButtonAt(root, mouse, viewport)
+				hit := hitWindow(root, mouse, viewport)
+				input.updateHover(hit, mouse)
+				hovered = nearestButton(hit)
 			}
 		}
 		pressed := click.pressed

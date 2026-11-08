@@ -18,6 +18,12 @@ const (
 	KeyUp
 	FocusGained
 	FocusLost
+	PointerEnter
+	PointerLeave
+	Tap
+	SecondaryTap
+	KeyRepeat
+	TextInput
 )
 
 type EventPhase uint8
@@ -25,6 +31,16 @@ type EventPhase uint8
 const (
 	Preview EventPhase = iota
 	Bubble
+	Direct
+)
+
+// PointerButton identifies the button that generated a pointer event.
+type PointerButton uint8
+
+const (
+	NoPointerButton PointerButton = iota
+	PrimaryButton
+	SecondaryButton
 )
 
 // InputOptions describes how a node participates in input.
@@ -46,6 +62,12 @@ type (
 	PointerCaptureLostHandler interface{ PointerCaptureLost(*InputEvent) }
 	KeyDownHandler            interface{ KeyDown(*InputEvent) }
 	KeyUpHandler              interface{ KeyUp(*InputEvent) }
+	PointerEnterHandler       interface{ PointerEnter(*InputEvent) }
+	PointerLeaveHandler       interface{ PointerLeave(*InputEvent) }
+	Tappable                  interface{ Tapped(*InputEvent) }
+	SecondaryTappable         interface{ SecondaryTapped(*InputEvent) }
+	KeyRepeatHandler          interface{ KeyRepeat(*InputEvent) }
+	TextInputHandler          interface{ TextInput(*InputEvent) }
 )
 
 // Focusable opts a node into focus navigation and receives focus notifications.
@@ -68,7 +90,9 @@ type InputEvent struct {
 	Source, CurrentTarget   Node
 	Position, LocalPosition rl.Vector2
 	Wheel                   rl.Vector2
+	Button                  PointerButton
 	Key                     int32
+	Text                    string
 	Shift, Ctrl, Alt        bool
 	Handled                 bool
 
@@ -79,7 +103,7 @@ type InputEvent struct {
 // CapturePointer routes subsequent mouse movement and release to CurrentTarget.
 func (e *InputEvent) CapturePointer() bool {
 	if e.router == nil || !e.router.down || e.current == nil || e.current.pending == nil || !e.current.inputEnabled() ||
-		(e.Kind != PointerDown && e.Kind != PointerMove) {
+		(e.Kind != PointerMove && (e.Kind != PointerDown || e.Button != PrimaryButton)) {
 		return false
 	}
 	e.router.setCapture(e.current)
@@ -175,6 +199,14 @@ func routeEvent(target *component, event *InputEvent) {
 	event.current, event.CurrentTarget = nil, nil
 }
 
+func directPointerEvent(node *component, kind EventKind, point rl.Vector2) {
+	target := node.eventNode()
+	dispatchInput(target, &InputEvent{
+		Kind: kind, Phase: Direct, Source: target, CurrentTarget: target, Position: point,
+		LocalPosition: rl.Vector2{X: point.X - node.bounds.X, Y: point.Y - node.bounds.Y},
+	})
+}
+
 func dispatchInput(node Node, event *InputEvent) {
 	if event.Phase == Preview {
 		if handler, ok := node.(PreviewInputHandler); ok {
@@ -219,13 +251,39 @@ func dispatchInput(node Node, event *InputEvent) {
 		if handler, ok := node.(Focusable); ok {
 			handler.FocusLost(event)
 		}
+	case PointerEnter:
+		if handler, ok := node.(PointerEnterHandler); ok {
+			handler.PointerEnter(event)
+		}
+	case PointerLeave:
+		if handler, ok := node.(PointerLeaveHandler); ok {
+			handler.PointerLeave(event)
+		}
+	case Tap:
+		if handler, ok := node.(Tappable); ok {
+			handler.Tapped(event)
+		}
+	case SecondaryTap:
+		if handler, ok := node.(SecondaryTappable); ok {
+			handler.SecondaryTapped(event)
+		}
+	case KeyRepeat:
+		if handler, ok := node.(KeyRepeatHandler); ok {
+			handler.KeyRepeat(event)
+		}
+	case TextInput:
+		if handler, ok := node.(TextInputHandler); ok {
+			handler.TextInput(event)
+		}
 	}
 }
 
 type inputRouter struct {
-	capture *component
-	point   rl.Vector2
-	down    bool
+	capture               *component
+	hoverPath             []*component
+	press, secondaryPress *component
+	point                 rl.Vector2
+	down                  bool
 }
 
 func (r *inputRouter) setCapture(target *component) {
@@ -238,12 +296,48 @@ func (r *inputRouter) setCapture(target *component) {
 
 func (r *inputRouter) cancel() {
 	r.down = false
+	r.press = nil
+	r.secondaryPress = nil
 	r.setCapture(nil)
 }
 
 func (r *inputRouter) prune() {
 	if r.capture != nil && (r.capture.pending == nil || !r.capture.inputEnabled()) {
 		r.setCapture(nil)
+	}
+	if r.press != nil && (r.press.pending == nil || !r.press.inputEnabled()) {
+		r.press = nil
+	}
+	if r.secondaryPress != nil && (r.secondaryPress.pending == nil || !r.secondaryPress.inputEnabled()) {
+		r.secondaryPress = nil
+	}
+}
+
+func (r *inputRouter) updateHover(hit *component, point rl.Vector2) {
+	if !hit.inputEnabled() || hit.pending == nil {
+		hit = nil
+	}
+	if len(r.hoverPath) == 0 && hit == nil || len(r.hoverPath) > 0 && r.hoverPath[len(r.hoverPath)-1] == hit {
+		return
+	}
+	var path []*component
+	for node := hit; node != nil; node = node.parent {
+		path = append(path, node)
+	}
+	slices.Reverse(path)
+	common := 0
+	for common < len(path) && common < len(r.hoverPath) && path[common] == r.hoverPath[common] {
+		common++
+	}
+	old := r.hoverPath
+	r.hoverPath = path
+	for i := len(old) - 1; i >= common; i-- {
+		directPointerEvent(old[i], PointerLeave, point)
+	}
+	for _, node := range path[common:] {
+		if node.pending != nil && node.inputEnabled() {
+			directPointerEvent(node, PointerEnter, point)
+		}
 	}
 }
 
@@ -256,14 +350,51 @@ func (r *inputRouter) pointer(kind EventKind, hit *component, point, wheel rl.Ve
 	if r.capture != nil && (kind == PointerMove || kind == PointerUp) {
 		target = r.capture
 	}
-	event := &InputEvent{Kind: kind, Position: point, Wheel: wheel, router: r}
-	if target.inputEnabled() {
+	button := NoPointerButton
+	if kind == PointerDown || kind == PointerUp || (kind == PointerMove && r.down) {
+		button = PrimaryButton
+	}
+	event := &InputEvent{Kind: kind, Position: point, Wheel: wheel, Button: button, router: r}
+	if target.inputEnabled() && target.pending != nil {
 		routeEvent(target, event)
 	}
+	if kind == PointerDown {
+		r.press = nil
+		if !event.Handled && hit.inputEnabled() && hit.pending != nil {
+			r.press = hit
+		}
+	}
 	if kind == PointerUp {
-		r.cancel()
+		pressed := r.press
+		r.press = nil
+		r.down = false
+		r.setCapture(nil)
+		if !event.Handled && pressed == hit && hit.inputEnabled() && hit.pending != nil {
+			tap := &InputEvent{Kind: Tap, Position: point, Button: PrimaryButton}
+			routeEvent(hit, tap)
+			return tap.Handled
+		}
 	}
 	return event.Handled
+}
+
+func (r *inputRouter) secondary(kind EventKind, hit *component, point rl.Vector2) {
+	event := &InputEvent{Kind: kind, Position: point, Button: SecondaryButton}
+	if hit.inputEnabled() && hit.pending != nil {
+		routeEvent(hit, event)
+	}
+	if kind == PointerDown {
+		r.secondaryPress = nil
+		if !event.Handled && hit.inputEnabled() && hit.pending != nil {
+			r.secondaryPress = hit
+		}
+		return
+	}
+	pressed := r.secondaryPress
+	r.secondaryPress = nil
+	if !event.Handled && pressed == hit && hit.inputEnabled() && hit.pending != nil {
+		routeEvent(hit, &InputEvent{Kind: SecondaryTap, Position: point, Button: SecondaryButton})
+	}
 }
 
 func hitWindow(root *component, mouse, viewport rl.Vector2) *component {

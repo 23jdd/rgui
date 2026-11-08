@@ -93,17 +93,17 @@ func (f *focusState) cancelPress() {
 
 func (f *focusState) readKeyboard(root *component, viewport rl.Vector2) {
 	shift := rl.IsKeyDown(rl.KeyLeftShift) || rl.IsKeyDown(rl.KeyRightShift)
-	dispatch := func(kind EventKind, key int32) bool {
-		event := &InputEvent{Kind: kind, Key: key, Shift: shift,
+	dispatch := func(kind EventKind, key int32, text string) bool {
+		event := &InputEvent{Kind: kind, Key: key, Text: text, Shift: shift,
 			Ctrl: rl.IsKeyDown(rl.KeyLeftControl) || rl.IsKeyDown(rl.KeyRightControl),
 			Alt:  rl.IsKeyDown(rl.KeyLeftAlt) || rl.IsKeyDown(rl.KeyRightAlt)}
-		if f.button.inputEnabled() {
+		if f.button.inputEnabled() && f.button.pending != nil {
 			routeEvent(f.button, event)
 		}
 		return event.Handled
 	}
 	release := func(key int32) {
-		if dispatch(KeyUp, key) {
+		if dispatch(KeyUp, key, "") {
 			if f.key == key {
 				f.cancelPress()
 			}
@@ -123,7 +123,7 @@ func (f *focusState) readKeyboard(root *component, viewport rl.Vector2) {
 		if key == rl.KeyLeftShift || key == rl.KeyRightShift {
 			shift = true
 		}
-		handled := dispatch(KeyDown, key)
+		handled := dispatch(KeyDown, key, "")
 		if !handled {
 			switch key {
 			case rl.KeyTab:
@@ -140,5 +140,13 @@ func (f *focusState) readKeyboard(root *component, viewport rl.Vector2) {
 		} else {
 			release(key)
 		}
+	}
+	for _, key := range f.keys {
+		if rl.IsKeyPressedRepeat(key) {
+			dispatch(KeyRepeat, key, "")
+		}
+	}
+	for ch := rl.GetCharPressed(); ch != 0; ch = rl.GetCharPressed() {
+		dispatch(TextInput, 0, string(rune(ch)))
 	}
 }
