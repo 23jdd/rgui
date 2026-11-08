@@ -91,6 +91,7 @@ func Run(config WindowConfig, view func() Node) error {
 		input.prune()
 		window := viewportForPixels(int32(rl.GetRenderWidth()), int32(rl.GetRenderHeight()), rl.GetWindowScaleDPI())
 		viewport := window.size
+		input.focus, input.viewport = &focus, viewport
 		if window != previousViewport || root.layoutChanged() {
 			root.layoutScale = window.scale
 			updateLayout(viewport)

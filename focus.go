@@ -12,6 +12,15 @@ type focusState struct {
 	keys   []int32
 }
 
+func (f *focusState) focusNode(node Node, viewport rl.Vector2) bool {
+	target := componentOf(node)
+	if !target.focusable(viewport) || target.pending == nil {
+		return false
+	}
+	f.set(target)
+	return true
+}
+
 func (f *focusState) set(button *component) {
 	if f.button != button {
 		previous := f.button
@@ -93,10 +102,11 @@ func (f *focusState) cancelPress() {
 
 func (f *focusState) readKeyboard(root *component, viewport rl.Vector2, imeBusy bool) (closeRequested bool) {
 	shift := rl.IsKeyDown(rl.KeyLeftShift) || rl.IsKeyDown(rl.KeyRightShift)
+	alt := rl.IsKeyDown(rl.KeyLeftAlt) || rl.IsKeyDown(rl.KeyRightAlt)
+	ctrl := rl.IsKeyDown(rl.KeyLeftControl) || rl.IsKeyDown(rl.KeyRightControl)
 	dispatch := func(kind EventKind, key int32, text string) bool {
 		event := &InputEvent{Kind: kind, Key: key, Text: text, Shift: shift,
-			Ctrl: rl.IsKeyDown(rl.KeyLeftControl) || rl.IsKeyDown(rl.KeyRightControl),
-			Alt:  rl.IsKeyDown(rl.KeyLeftAlt) || rl.IsKeyDown(rl.KeyRightAlt)}
+			Ctrl: ctrl, Alt: alt}
 		if f.button.inputEnabled() && f.button.pending != nil {
 			routeEvent(f.button, event)
 		}
@@ -127,7 +137,16 @@ func (f *focusState) readKeyboard(root *component, viewport rl.Vector2, imeBusy 
 		if key == rl.KeyLeftShift || key == rl.KeyRightShift {
 			shift = true
 		}
+		if key == rl.KeyLeftAlt || key == rl.KeyRightAlt {
+			alt = true
+		}
+		if key == rl.KeyLeftControl || key == rl.KeyRightControl {
+			ctrl = true
+		}
 		handled := dispatch(KeyDown, key, "")
+		if !handled && alt && !ctrl && (key >= rl.KeyA && key <= rl.KeyZ || key >= rl.KeyZero && key <= rl.KeyNine) {
+			handled = focusAccessKey(root, f, viewport, rune(key))
+		}
 		if !handled {
 			switch key {
 			case rl.KeyTab:

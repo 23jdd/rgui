@@ -120,6 +120,11 @@ func (e *InputEvent) ReleasePointer() {
 	}
 }
 
+// Focus moves focus to a mounted, focusable node.
+func (e *InputEvent) Focus(node Node) bool {
+	return e.router != nil && e.router.focus != nil && e.router.focus.focusNode(node, e.router.viewport)
+}
+
 func (c *component) eventNode() Node {
 	if c.custom != nil {
 		return c.custom
@@ -292,6 +297,8 @@ func dispatchInput(node Node, event *InputEvent) {
 }
 
 type inputRouter struct {
+	focus                 *focusState
+	viewport              rl.Vector2
 	capture               *component
 	hoverPath             []*component
 	press, secondaryPress *component
@@ -383,7 +390,7 @@ func (r *inputRouter) pointer(kind EventKind, hit *component, point, wheel rl.Ve
 		r.down = false
 		r.setCapture(nil)
 		if !event.Handled && pressed == hit && hit.inputEnabled() && hit.pending != nil {
-			tap := &InputEvent{Kind: Tap, Position: point, Button: PrimaryButton}
+			tap := &InputEvent{Kind: Tap, Position: point, Button: PrimaryButton, router: r}
 			routeEvent(hit, tap)
 			return tap.Handled
 		}
