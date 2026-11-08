@@ -5,6 +5,8 @@ import (
 	"os"
 	"runtime"
 
+	"rgui/draw"
+
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -57,13 +59,23 @@ func Run(config WindowConfig, view func() Node) error {
 	root.mount(pending)
 
 	var click clickState
+	var previousViewport rl.Vector2
+	style := textStyle(font)
+	measure := func(value string) rl.Vector2 { return draw.MeasureText(value, style) }
 	for !rl.WindowShouldClose() {
-		width := float32(rl.GetScreenWidth())
-		contentWidth := min(width-32, 280)
-		root.layout((width-contentWidth)/2, 36, contentWidth)
-		hovered := root.buttonAt(rl.GetMousePosition())
+		viewport := rl.Vector2{X: float32(rl.GetScreenWidth()), Y: float32(rl.GetScreenHeight())}
+		if viewport != previousViewport {
+			layoutRoot(root, viewport, measure)
+			previousViewport = viewport
+		}
+		mouse := rl.GetMousePosition()
+		hovered := windowButtonAt(root, mouse, viewport)
 		click.update(hovered, rl.IsMouseButtonPressed(rl.MouseButtonLeft), rl.IsMouseButtonReleased(rl.MouseButtonLeft))
-		flushBindings(pending)
+		if len(pending) > 0 {
+			flushBindings(pending)
+			layoutRoot(root, viewport, measure)
+			hovered = windowButtonAt(root, mouse, viewport)
+		}
 
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.NewColor(23, 28, 38, 255))
@@ -71,6 +83,13 @@ func Run(config WindowConfig, view func() Node) error {
 		rl.EndDrawing()
 	}
 	return nil
+}
+
+func windowButtonAt(root *component, mouse, viewport rl.Vector2) *component {
+	if mouse.X < 0 || mouse.Y < 0 || mouse.X >= viewport.X || mouse.Y >= viewport.Y {
+		return nil
+	}
+	return root.buttonAt(mouse)
 }
 
 type clickState struct {

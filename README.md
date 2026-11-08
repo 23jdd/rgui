@@ -102,7 +102,9 @@ go run ./examples/primitives
 - **Grid** 首批支持单单元格定位。固定轨道先预留，`Auto` 轨道取该轨道内子节点所需尺寸的最大值，`Star` 轨道按权重分配非负剩余空间。跨行、跨列留到后续。首版用窗口裁剪布局溢出，绘制和命中采用相同边界。[WPF Grid 自动布局](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/how-to-use-a-grid-for-automatic-layout)
 - **Signal 与布局**。文本绑定更新导致期望尺寸变化时，在绘制前重新测量和排列受影响的布局。窗口尺寸变化时，在处理鼠标命中前刷新布局。首版允许重算整棵树，按节点缓存测量结果留到后续。
 
-第一批使用 Go 构造函数，公开类型与调用形式随示例确定。布局算法用无需打开窗口的测试验证，窗口缩放和命中行为用 `examples/layout` 工具栏验证。
+第一批提供 `StackPanel(Vertical, gap, children...)` 和 `StackPanel(Horizontal, gap, children...)`。用 `node.WithLayout(Box{...})` 设置宽高、外边距、内边距和两个方向的对齐。宽高为零时按内容测量，默认对齐为拉伸。`Stack` 保留原有的固定行高和根容器宽度。
+
+布局算法用无需打开窗口的测试验证，窗口缩放和命中行为用第二批的 `examples/layout` 工具栏验证。
 
 ## 每次改动的工作流
 

@@ -18,15 +18,17 @@ type component struct {
 	text      string
 	boundText *binding
 	bounds    rl.Rectangle
+	desired   rl.Vector2
+	box       Box
+	panel     panelLayout
+	legacy    bool
 }
 
 // Stack lays out its children vertically in declaration order.
 func Stack(children ...Node) Node {
-	stack := &component{children: make([]*component, len(children))}
-	for i, child := range children {
-		stack.children[i] = child.component
-	}
-	return Node{stack}
+	stack := StackPanel(Vertical, stackGap, children...)
+	stack.component.legacy = true
+	return stack
 }
 
 // Text displays the result of read. The callback should only compute text.
@@ -70,26 +72,12 @@ const (
 	letterSpacing = 1
 )
 
-func (c *component) layout(x, y, width float32) float32 {
-	if c.children == nil {
-		c.bounds = rl.Rectangle{X: x, Y: y, Width: width, Height: rowHeight}
-		return rowHeight
-	}
-	var height float32
-	for i, child := range c.children {
-		if i > 0 {
-			height += stackGap
-		}
-		height += child.layout(x, y+height, width)
-	}
-	return height
-}
-
 func (c *component) buttonAt(point rl.Vector2) *component {
-	if c.onClick != nil && rl.CheckCollisionPointRec(point, c.bounds) {
+	if c.onClick != nil && c.bounds.Width > 0 && c.bounds.Height > 0 && rl.CheckCollisionPointRec(point, c.bounds) {
 		return c
 	}
-	for _, child := range c.children {
+	for i := len(c.children) - 1; i >= 0; i-- {
+		child := c.children[i]
 		if button := child.buttonAt(point); button != nil {
 			return button
 		}
@@ -104,6 +92,9 @@ func (c *component) draw(font rl.Font, hovered, pressed *component) {
 		}
 		return
 	}
+	if c.bounds.Width <= 0 || c.bounds.Height <= 0 {
+		return
+	}
 	if c.onClick != nil {
 		fill := rl.DarkBlue
 		if c == hovered {
@@ -114,11 +105,21 @@ func (c *component) draw(font rl.Font, hovered, pressed *component) {
 		}
 		draw.Rect(c.bounds, 0, draw.Style{Fill: fill})
 	}
-	style := draw.TextStyle{Font: font, Size: fontSize, Spacing: letterSpacing, Color: rl.RayWhite}
+	style := textStyle(font)
+	content := inset(c.bounds, c.box.Padding)
 	size := draw.MeasureText(c.text, style)
 	position := rl.Vector2{
-		X: c.bounds.X + (c.bounds.Width-size.X)/2,
-		Y: c.bounds.Y + (c.bounds.Height-size.Y)/2,
+		X: content.X + (content.Width-size.X)/2,
+		Y: content.Y + (content.Height-size.Y)/2,
 	}
-	draw.Text(position, c.text, style)
+	if size.X <= content.Width && size.Y <= content.Height {
+		draw.Text(position, c.text, style)
+		return
+	}
+	var canvas draw.Canvas
+	canvas.Clip(content, func() { draw.Text(position, c.text, style) })
+}
+
+func textStyle(font rl.Font) draw.TextStyle {
+	return draw.TextStyle{Font: font, Size: fontSize, Spacing: letterSpacing, Color: rl.RayWhite}
 }
