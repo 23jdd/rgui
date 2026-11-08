@@ -32,6 +32,7 @@ type WindowConfig struct {
 	// invalidate their visual when their paint output changes.
 	RetainedRendering bool
 	OnFrame           func(FrameStats)
+	OnClose           func() // Runs on the UI thread after unmounting and before closing raylib.
 }
 
 type windowSettings struct {

@@ -41,6 +41,8 @@ button.tab:selected:active { background: var(--button-hover); color: var(--text)
 groupbox { padding: 12px; }
 .group-title { background: var(--background); color: var(--selection); padding: 6px 8px; margin-bottom: 4px; }
 .side-panel { margin-left: 12px; }
+.image-bottom { margin-top: 8px; }
+.image-preview { height: 90px; padding: 2px; background: var(--surface); border: 2px solid var(--border); }
 .footer { margin-top: 10px; padding: 6px 10px; }
 statusbar { padding: 0; border: none; }
 .ready { color: #00e436; }

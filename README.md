@@ -24,6 +24,7 @@ go run ./examples/counter
 | `VSync`、`TargetFPS` | 启用垂直同步并设置帧率上限。上限为零时使用默认 60 FPS，设为 -1 时取消帧率上限。 |
 | `Background` | 可选的 `*color.RGBA`，覆盖样式表指定的窗口背景。 |
 | `StyleSheet` | 可选的 `*style.Sheet`，覆盖内置控件主题。 |
+| `OnClose` | 可选的清理回调。组件树卸载后、raylib 窗口关闭前调用，可释放应用持有的纹理。 |
 
 运行 `go run ./examples/layout` 可查看 560 × 340 的初始窗口、缩放范围和自定义背景。无边框窗口仍可用 Esc 关闭。
 
@@ -267,6 +268,8 @@ func run() error {
 样式表支持 CSS 子集。浏览器布局、百分比长度、`@` 规则和 `!important` 当前未接入。未识别的属性可保留在规则中，绘制时由控件决定是否读取。
 
 运行 `go run ./examples/controls` 查看像素风主题和两列控件布局。主题位于 `examples/controls/theme.css`，使用 raylib 的内置位图字体和 PICO-8 的部分色板。`--mark-radius`、`--track-radius` 和 `--thumb-radius` 分别控制选择标记、轨道和滑块的圆角，像素主题将它们设为零。[PICO-8 手册](https://www.lexaloffle.com/dl/docs/pico-8_manual.html)
+
+切换到 `IMAGE` 页可用内嵌的 `orbit.png` 对比四种显示方式。`Uniform` 保持比例并留边，`Fill` 拉伸，`UniformToFill` 保持比例并裁切，`None` 按原尺寸绘制。四个 `Image` 共用一张纹理，窗口关闭时通过 `OnClose` 释放。
 
 ## 每次改动的工作流
 

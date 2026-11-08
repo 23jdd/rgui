@@ -56,6 +56,9 @@ func Run(config WindowConfig, view func() Node) error {
 		defer rl.UnloadFont(font)
 	}
 
+	if config.OnClose != nil {
+		defer config.OnClose()
+	}
 	root := componentOf(view())
 	if root == nil {
 		return fmt.Errorf("view returned an empty node")

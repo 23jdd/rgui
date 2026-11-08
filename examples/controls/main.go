@@ -19,7 +19,7 @@ func styled(node rgui.Node, classes ...string) rgui.Node {
 	return rgui.WithStyle(node, rgui.StyleOptions{Classes: classes})
 }
 
-func view() rgui.Node {
+func view(texture rl.Texture2D) rgui.Node {
 	status := rgui.NewSignal("READY")
 	menu := rgui.Menu(rgui.MenuGroup{Label: "FILE", Items: []rgui.MenuItem{
 		{Label: "RESET STATUS", Action: func() { status.Set("READY") }},
@@ -44,6 +44,7 @@ func view() rgui.Node {
 			{Header: "DATA", Content: data()},
 			{Header: "DOCUMENTS", Content: documents()},
 			{Header: "INK", Content: ink()},
+			{Header: "IMAGE", Content: images(texture)},
 		}, nil)},
 	), "gallery")
 }
@@ -120,9 +121,30 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err := rgui.Run(config, view); err != nil {
+	if err := runGallery(config); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func runGallery(config rgui.WindowConfig) error {
+	var texture rl.Texture2D
+	var loadErr error
+	config.OnClose = func() {
+		if texture.ID != 0 {
+			rl.UnloadTexture(texture)
+		}
+	}
+	err := rgui.Run(config, func() rgui.Node {
+		texture, loadErr = loadGalleryTexture()
+		if loadErr != nil {
+			return nil
+		}
+		return view(texture)
+	})
+	if loadErr != nil {
+		return loadErr
+	}
+	return err
 }
 
 func galleryConfig() (rgui.WindowConfig, error) {
