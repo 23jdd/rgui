@@ -177,7 +177,9 @@ type Node interface {
 
 自定义容器使用 `WithChildren(custom, children...)`。子节点按声明顺序叠放在内容区域。保留返回的 `Node`，在 UI 线程用 `SetChildren(container, children...)` 更新。仍在列表中的节点保留状态，移除节点释放订阅。
 
-用 `BaseNode.Input` 或 `WithInput(node, options)` 注册输入处理。事件先预览再冒泡，设置 `Handled` 可停止后续处理和默认动作。鼠标捕获通过 `InputEvent.CapturePointer()` 请求，释放鼠标、移除节点或窗口失焦时自动结束。Tab 按 `TabIndex` 和声明顺序导航，负值跳过 Tab。
+节点通过可选接口处理输入。例如，实现 `PointerDown(*rgui.InputEvent)` 即满足 `rgui.PointerDownHandler`。移动、释放、滚轮、捕获丢失和键盘事件各有对应接口。实现 `Focusable` 可参与焦点导航并接收获得与失去焦点的通知。该扩展方式参考 Fyne 的能力接口。[Fyne 鼠标接口](https://docs.fyne.io/api/v2/driver/desktop/mouseable/) · [Fyne 焦点接口](https://docs.fyne.io/api/v2/fyne/focusable/)
+
+`PreviewInputHandler` 在根到目标的预览阶段执行，具体事件方法在目标到根的冒泡阶段执行。设置 `Handled` 可停止后续处理和默认动作。通过 `InputEvent.CapturePointer()` 请求捕获，释放鼠标、移除节点或窗口失焦时自动结束。`BaseNode.Input` 和 `WithInput` 用于配置禁用、命中和 Tab 顺序。Tab 按 `TabIndex` 和声明顺序导航，负值跳过 Tab。
 
 布局复用约束和属性未变化的节点结果。对齐变化只使放置失效，尺寸变化同时使测量失效。直接修改 `Box` 仍会被框架检测；自定义节点的内容尺寸改变时可调用 `BaseNode.InvalidateMeasure()`。
 

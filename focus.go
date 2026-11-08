@@ -63,7 +63,11 @@ func tabOrder(node *component, viewport rl.Vector2, buttons []*component) []*com
 }
 
 func (c *component) focusable(viewport rl.Vector2) bool {
-	if !c.inputEnabled() || (!c.enabledButton() && !c.layoutBase().Input.Focusable) {
+	if !c.inputEnabled() {
+		return false
+	}
+	_, acceptsFocus := c.eventNode().(Focusable)
+	if !acceptsFocus && !c.enabledButton() && !c.layoutBase().Input.Focusable {
 		return false
 	}
 	b := visibleBounds(c)

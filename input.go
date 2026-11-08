@@ -32,7 +32,26 @@ const (
 type InputOptions struct {
 	Disabled, HitTestInvisible, Focusable bool
 	TabIndex                              int
-	OnEvent                               func(*InputEvent)
+}
+
+// PreviewInputHandler handles events during the root-to-target pass.
+type PreviewInputHandler interface{ PreviewInput(*InputEvent) }
+
+// Implement the handlers for the input events a node accepts.
+type (
+	PointerDownHandler        interface{ PointerDown(*InputEvent) }
+	PointerMoveHandler        interface{ PointerMove(*InputEvent) }
+	PointerUpHandler          interface{ PointerUp(*InputEvent) }
+	PointerWheelHandler       interface{ PointerWheel(*InputEvent) }
+	PointerCaptureLostHandler interface{ PointerCaptureLost(*InputEvent) }
+	KeyDownHandler            interface{ KeyDown(*InputEvent) }
+	KeyUpHandler              interface{ KeyUp(*InputEvent) }
+)
+
+// Focusable opts a node into focus navigation and receives focus notifications.
+type Focusable interface {
+	FocusGained(*InputEvent)
+	FocusLost(*InputEvent)
 }
 
 // WithInput configures a node's input behavior. Buttons are focusable by default.
@@ -150,12 +169,57 @@ func routeEvent(target *component, event *InputEvent) {
 			}
 			event.current, event.CurrentTarget = node, node.eventNode()
 			event.LocalPosition = rl.Vector2{X: event.Position.X - node.bounds.X, Y: event.Position.Y - node.bounds.Y}
-			if handler := node.layoutBase().Input.OnEvent; handler != nil {
-				handler(event)
-			}
+			dispatchInput(event.CurrentTarget, event)
 		}
 	}
 	event.current, event.CurrentTarget = nil, nil
+}
+
+func dispatchInput(node Node, event *InputEvent) {
+	if event.Phase == Preview {
+		if handler, ok := node.(PreviewInputHandler); ok {
+			handler.PreviewInput(event)
+		}
+		return
+	}
+	switch event.Kind {
+	case PointerDown:
+		if handler, ok := node.(PointerDownHandler); ok {
+			handler.PointerDown(event)
+		}
+	case PointerMove:
+		if handler, ok := node.(PointerMoveHandler); ok {
+			handler.PointerMove(event)
+		}
+	case PointerUp:
+		if handler, ok := node.(PointerUpHandler); ok {
+			handler.PointerUp(event)
+		}
+	case PointerWheel:
+		if handler, ok := node.(PointerWheelHandler); ok {
+			handler.PointerWheel(event)
+		}
+	case PointerCaptureLost:
+		if handler, ok := node.(PointerCaptureLostHandler); ok {
+			handler.PointerCaptureLost(event)
+		}
+	case KeyDown:
+		if handler, ok := node.(KeyDownHandler); ok {
+			handler.KeyDown(event)
+		}
+	case KeyUp:
+		if handler, ok := node.(KeyUpHandler); ok {
+			handler.KeyUp(event)
+		}
+	case FocusGained:
+		if handler, ok := node.(Focusable); ok {
+			handler.FocusGained(event)
+		}
+	case FocusLost:
+		if handler, ok := node.(Focusable); ok {
+			handler.FocusLost(event)
+		}
+	}
 }
 
 type inputRouter struct {
