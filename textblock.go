@@ -47,7 +47,7 @@ func (b *textBlock) Measure(ctx MeasureContext) rl.Vector2 {
 	for _, line := range lines {
 		width = max(width, b.measureText(line).X)
 	}
-	return rl.Vector2{X: width, Y: float32(len(lines)) * fontSize}
+	return rl.Vector2{X: width, Y: float32(len(lines)) * b.textMetrics().size}
 }
 
 func (b *textBlock) wrap(width float32) []string {
@@ -63,6 +63,7 @@ func (b *textBlock) Place(bounds rl.Rectangle) {
 
 func (b *textBlock) Primitives(ctx PaintContext) []Node {
 	bounds := b.Bounds()
+	style := ctx.TextStyle()
 	nodes := make([]Node, 0, len(b.lines))
 	for i, line := range b.lines {
 		width := b.measureText(line).X
@@ -73,7 +74,7 @@ func (b *textBlock) Primitives(ctx PaintContext) []Node {
 		case End:
 			x += bounds.Width - width
 		}
-		nodes = append(nodes, &TextNode{Position: rl.Vector2{X: x, Y: bounds.Y + float32(i)*fontSize}, Text: line, Style: textStyle(ctx.Font)})
+		nodes = append(nodes, &TextNode{Position: rl.Vector2{X: x, Y: bounds.Y + float32(i)*style.Size}, Text: line, Style: style})
 	}
 	return nodes
 }

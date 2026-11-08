@@ -47,11 +47,12 @@ func Run(config WindowConfig, view func() Node) error {
 			glyphs = append(glyphs, ch)
 		}
 		glyphs = append(glyphs, []rune(config.ExtraGlyphs)...)
-		loaded := rl.LoadFontEx(config.FontPath, fontSize, glyphs)
+		loaded := rl.LoadFontEx(config.FontPath, 36, glyphs)
 		if loaded.Texture.ID == font.Texture.ID || !rl.IsFontValid(loaded) {
 			return fmt.Errorf("raylib could not load font %q", config.FontPath)
 		}
 		font = loaded
+		rl.SetTextureFilter(font.Texture, rl.FilterBilinear)
 		defer rl.UnloadFont(font)
 	}
 
@@ -63,6 +64,9 @@ func Run(config WindowConfig, view func() Node) error {
 		return fmt.Errorf("view root already belongs to a tree")
 	}
 	pending := make(subscriptions)
+	root.sheet = config.StyleSheet
+	root.styleFont = font
+	root.styleRevision++
 	defer root.unmount()
 	root.mount(pending)
 	ime := imeSession{platform: openIME()}
@@ -171,20 +175,26 @@ func Run(config WindowConfig, view func() Node) error {
 				hovered = nearestButton(hit)
 			}
 		}
-		pressed := click.pressed
-		if pressed != hovered {
-			pressed = nil
-		}
 		var focused *component
 		if active && focus.button.focusable(viewport) {
 			focused = focus.button
-			if focus.key != 0 {
-				pressed = focused
-			}
 		}
 		ime.sync(focused, active, window)
 
-		state := paintState{hovered: hovered, pressed: pressed, focused: focused}
+		hoverTarget := hovered
+		if n := len(input.hoverPath); n > 0 {
+			hoverTarget = input.hoverPath[n-1]
+		}
+		activeTarget := click.pressed
+		switch {
+		case input.capture != nil:
+			activeTarget = input.capture
+		case input.press != nil:
+			activeTarget = input.press
+		case focus.key != 0:
+			activeTarget = focused
+		}
+		state := paintState{hovered: hoverTarget, pressed: activeTarget, focused: focused}
 		rl.BeginDrawing()
 		start := time.Now()
 		var cached, fresh bool
@@ -192,8 +202,9 @@ func Run(config WindowConfig, view func() Node) error {
 			cached, fresh = retained.prepare(window)
 		}
 		if cached {
-			damage := unionRect(root.takeVisualDamage(), state.damage(previousPaint))
-			if layoutUpdated || fresh {
+			visualDamage, disabledChanged := root.takeVisualDamage(false)
+			damage := unionRect(visualDamage, state.damage(previousPaint))
+			if layoutUpdated || fresh || root.sheet != nil && (state != previousPaint || disabledChanged) {
 				damage = window.fullDamage()
 			}
 			pixels := window.pixelDamage(damage)
@@ -202,7 +213,7 @@ func Run(config WindowConfig, view func() Node) error {
 				stats.Painted = true
 				stats.PaintedPixels = int64(pixels.Width) * int64(pixels.Height)
 				retained.update(stats.Damage, settings.background, func(canvas *draw.Canvas) {
-					root.paintScene(canvas, font, hovered, pressed, focused, &stats.Damage)
+					root.paintScene(canvas, font, state, &stats.Damage)
 				})
 			}
 		} else {
@@ -211,7 +222,7 @@ func Run(config WindowConfig, view func() Node) error {
 			stats.PaintedPixels = int64(window.width) * int64(window.height)
 			rl.ClearBackground(settings.background)
 			canvas := draw.NewCanvas(window.scale, window.height)
-			root.paintScene(&canvas, font, hovered, pressed, focused, nil)
+			root.paintScene(&canvas, font, state, nil)
 			rl.DrawRenderBatchActive()
 		}
 		stats.Paint = time.Since(start)

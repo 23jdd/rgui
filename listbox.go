@@ -17,7 +17,7 @@ func ListBox(items []string, selected *Signal[int]) Node {
 	}
 	offset := NewSignal(rl.Vector2{})
 	list := &listBox{items: slices.Clone(items), selected: selected, offset: offset}
-	return ScrollViewer(list, offset, false, true)
+	return styleName(ScrollViewer(styleName(list, "listbox-content"), offset, false, true), "listbox")
 }
 
 const listRowHeight = 34
@@ -106,6 +106,7 @@ func (n *listBox) KeyDown(e *InputEvent) {
 }
 
 func (n *listBox) Primitives(ctx PaintContext) []Node {
+	text := ctx.TextStyle()
 	bounds := n.Bounds()
 	visible := bounds
 	if n.host != nil {
@@ -119,13 +120,13 @@ func (n *listBox) Primitives(ctx PaintContext) []Node {
 	for i := first; i < end; i++ {
 		y := bounds.Y + float32(i)*listRowHeight
 		if i == n.selected.Get() {
-			style := draw.Style{Fill: rl.DarkBlue}
+			style := draw.Style{Fill: ctx.color("--selection", rl.DarkBlue)}
 			if n.focused {
-				style.Stroke = draw.Stroke{Color: rl.Gold, Width: 1}
+				style.Stroke = draw.Stroke{Color: ctx.color("--focus", rl.Gold), Width: 1}
 			}
 			nodes = append(nodes, &RectNode{Rect: rl.Rectangle{X: bounds.X, Y: y, Width: bounds.Width, Height: listRowHeight}, Style: style})
 		}
-		nodes = append(nodes, &TextNode{Position: rl.Vector2{X: bounds.X + 10, Y: y + (listRowHeight-fontSize)/2}, Text: n.items[i], Style: textStyle(ctx.Font)})
+		nodes = append(nodes, &TextNode{Position: rl.Vector2{X: bounds.X + 10, Y: y + (listRowHeight-text.Size)/2}, Text: n.items[i], Style: text})
 	}
 	return nodes
 }

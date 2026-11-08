@@ -45,13 +45,14 @@ func (a *accessText) Measure(ctx MeasureContext) rl.Vector2 {
 
 func (a *accessText) Primitives(ctx PaintContext) []Node {
 	bounds := a.Bounds()
-	y := bounds.Y + (bounds.Height-fontSize)/2
-	nodes := []Node{&TextNode{Position: rl.Vector2{X: bounds.X, Y: y}, Text: string(a.text), Style: textStyle(ctx.Font)}}
+	style := ctx.TextStyle()
+	y := bounds.Y + (bounds.Height-style.Size)/2
+	nodes := []Node{&TextNode{Position: rl.Vector2{X: bounds.X, Y: y}, Text: string(a.text), Style: style}}
 	if a.index >= 0 && a.measureText != nil {
 		left := a.measureText(string(a.text[:a.index])).X
 		right := a.measureText(string(a.text[:a.index+1])).X
-		nodes = append(nodes, &RectNode{Rect: rl.Rectangle{X: bounds.X + left, Y: y + fontSize - 1, Width: max(0, right-left), Height: 1},
-			Style: draw.Style{Fill: rl.RayWhite}})
+		nodes = append(nodes, &RectNode{Rect: rl.Rectangle{X: bounds.X + left, Y: y + style.Size - 1, Width: max(0, right-left), Height: 1},
+			Style: draw.Style{Fill: style.Color}})
 	}
 	return nodes
 }

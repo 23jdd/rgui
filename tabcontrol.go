@@ -15,17 +15,16 @@ func TabControl(items []TabItem, selected *Signal[int]) Node {
 	headers := make([]Node, len(items))
 	contents := make([]Node, len(items))
 	for i, item := range items {
-		header := componentOf(Button(item.Header, func() { selected.Set(i) }))
+		header := componentOf(WithStyle(Button(item.Header, func() { selected.Set(i) }), StyleOptions{Classes: []string{"tab"}}))
+		header.selected = func() bool { return selected.Get() == i }
 		header.readText = func() string {
-			if selected.Get() == i {
-				return "> " + item.Header
-			}
+			header.selected() // Subscribe this header to selection changes.
 			return item.Header
 		}
 		headers[i], contents[i] = header, item.Content
 	}
-	return DockPanel(true,
+	return styleName(DockPanel(true,
 		Docked{Edge: DockTop, Child: WrapPanel(Horizontal, 4, headers...)},
 		Docked{Child: newContentSwitch(selected.Get, contents)},
-	)
+	), "tabcontrol")
 }

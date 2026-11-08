@@ -5,5 +5,5 @@ func BulletDecorator(bullet, content Node, gap float32) Node {
 	marker := panel(overlayLayout{}, []Node{bullet})
 	marker.Margin.Right = max(0, gap)
 	marker.VerticalAlignment = Start
-	return DockPanel(true, Docked{Edge: DockLeft, Child: marker}, Docked{Child: content})
+	return styleName(DockPanel(true, Docked{Edge: DockLeft, Child: marker}, Docked{Child: content}), "bulletdecorator")
 }

@@ -32,13 +32,13 @@ func (n *progressBar) bind(pending subscriptions) *binding {
 	return bindVisual(&n.BaseNode, n.value, pending)
 }
 
-func (n *progressBar) Primitives(PaintContext) []Node {
+func (n *progressBar) Primitives(ctx PaintContext) []Node {
 	track := n.Bounds()
 	fill := track
 	fill.Width *= float32((rangeValue(n.value.Get(), n.minimum, n.maximum) - n.minimum) / (n.maximum - n.minimum))
 	return []Node{
-		&RectNode{Rect: track, Radius: 4, Style: draw.Style{Fill: rl.DarkGray}},
-		&RectNode{Rect: fill, Radius: 4, Style: draw.Style{Fill: rl.SkyBlue}},
+		&RectNode{Rect: track, Radius: 4, Style: draw.Style{Fill: ctx.color("--track", rl.DarkGray)}},
+		&RectNode{Rect: fill, Radius: 4, Style: draw.Style{Fill: ctx.color("--accent", rl.SkyBlue)}},
 	}
 }
 

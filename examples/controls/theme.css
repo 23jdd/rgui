@@ -1,0 +1,44 @@
+:root {
+  --background: #eff3f8;
+  --surface: #ffffff;
+  --field: #f8fafc;
+  --track: #dde5f0;
+  --border: #c6d1df;
+  --text: #17253b;
+  --muted: #485d79;
+  --accent: #2556a6;
+  --selection: #dbe9fc;
+  --focus: #3264bc;
+  --button: #f3f6fb;
+  --button-hover: #e4edf9;
+  --button-active: #d7e4f8;
+  font-size: 16px;
+  letter-spacing: 0;
+}
+
+.gallery { padding: 20px 24px 16px; }
+.masthead { margin-bottom: 14px; }
+.eyebrow { color: var(--accent); font-size: 12px; letter-spacing: 1px; }
+.title { font-size: 32px; }
+.caption, label, statusbar { color: var(--muted); font-size: 14px; }
+
+menu { margin-bottom: 8px; }
+tabcontrol > wrappanel { margin-bottom: 12px; }
+button, repeatbutton { height: 36px; }
+button.tab { background: transparent; border-color: transparent; }
+button.tab:hover { background: var(--button-hover); }
+button.tab:selected { background: var(--selection); color: #153d7b; }
+button.tab:focus { border-color: var(--focus); }
+
+groupbox { padding: 18px; }
+.group-title { color: #223b5e; font-size: 22px; margin-bottom: 8px; }
+.side-panel { margin-left: 14px; }
+statusbar { margin-top: 14px; padding: 8px 12px; }
+
+textbox, passwordbox { height: 38px; }
+#name:focus { border-color: var(--accent); }
+button.primary { background: #2858a6; border-color: #2858a6; color: white; }
+button.primary:hover { background: #204985; }
+button.primary:active { background: #183a70; }
+button.primary:focus { border-color: #173662; }
+button.primary:disabled { background: var(--track); border-color: var(--border); color: var(--muted); }

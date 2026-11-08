@@ -32,7 +32,8 @@ type repeatButton struct {
 }
 
 func (b *repeatButton) Measure(ctx MeasureContext) rl.Vector2 {
-	return rl.Vector2{X: ctx.MeasureText(b.label).X + 24, Y: 40}
+	size := ctx.MeasureText(b.label)
+	return rl.Vector2{X: size.X + 24, Y: max(40, size.Y)}
 }
 
 func (b *repeatButton) begin() {
@@ -100,15 +101,10 @@ func (b *repeatButton) tick(now time.Time, active bool, focus *component) {
 
 func (b *repeatButton) Primitives(ctx PaintContext) []Node {
 	bounds := b.Bounds()
-	fill := rl.DarkBlue
-	if b.pointer || b.key != 0 {
-		fill = rl.Blue
-	}
-	size := draw.MeasureText(b.label, textStyle(ctx.Font))
+	size := draw.MeasureText(b.label, ctx.TextStyle())
 	return []Node{
-		&RectNode{Rect: bounds, Radius: 3, Style: draw.Style{Fill: fill}},
 		&TextNode{Position: rl.Vector2{X: bounds.X + (bounds.Width-size.X)/2, Y: bounds.Y + (bounds.Height-size.Y)/2},
-			Text: b.label, Style: textStyle(ctx.Font)},
+			Text: b.label, Style: ctx.TextStyle()},
 	}
 }
 

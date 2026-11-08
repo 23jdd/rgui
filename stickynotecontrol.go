@@ -9,5 +9,5 @@ func StickyNoteControl(title string, text *Signal[string], ink *Signal[[]InkStro
 		{Header: "Text", Content: TextBox(text)},
 		{Header: "Ink", Content: InkCanvas(ink, rl.SkyBlue, 2)},
 	}, nil)
-	return Expander(title, note, expanded)
+	return styleName(Expander(title, note, expanded), "stickynotecontrol")
 }

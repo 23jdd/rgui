@@ -4,8 +4,6 @@ import (
 	"image/color"
 	"slices"
 
-	"rgui/draw"
-
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -66,8 +64,7 @@ func (n *inkCanvas) PointerCaptureLost(*InputEvent) {
 }
 
 func (n *inkCanvas) Primitives(ctx PaintContext) []Node {
-	nodes := []Node{&RectNode{Rect: n.Bounds(), Style: draw.Style{Fill: rl.DarkGray}}}
-	nodes = append(nodes, n.inkPresenter.Primitives(ctx)...)
+	nodes := n.inkPresenter.Primitives(ctx)
 	if len(n.active) > 0 {
 		nodes = append(nodes, inkPrimitive(n.Bounds(), InkStroke{Points: n.active, Color: n.pen, Width: n.width}))
 	}

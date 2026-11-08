@@ -2,7 +2,9 @@ package rgui
 
 import (
 	"reflect"
+
 	"rgui/draw"
+	"rgui/style"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -22,12 +24,13 @@ type Node interface {
 // Its zero value has no preferred size and produces no primitives.
 type BaseNode struct {
 	Box
-	Input   InputOptions
-	bounds  rl.Rectangle
-	placed  bool
-	slot    rl.Rectangle
-	desired rl.Vector2
-	host    *component
+	Appearance StyleOptions
+	Input      InputOptions
+	bounds     rl.Rectangle
+	placed     bool
+	slot       rl.Rectangle
+	desired    rl.Vector2
+	host       *component
 }
 
 var _ Node = (*BaseNode)(nil)
@@ -60,12 +63,12 @@ type MeasureContext struct {
 	MeasureText func(string) rl.Vector2
 }
 
-// PaintContext supplies the window's default font.
+// PaintContext supplies the window's font and the node's resolved CSS values.
 type PaintContext struct {
-	Font   rl.Font
-	canvas *draw.Canvas
-
-	hovered, pressed, focused bool
+	Font    rl.Font
+	Style   style.Values
+	canvas  *draw.Canvas
+	metrics textMetrics
 }
 
 func componentOf(node Node) *component {
@@ -116,6 +119,12 @@ type component struct {
 	decoration               *BorderStyle
 	visualDamage             rl.Rectangle
 	lastDisabled             bool
+	styleName                string
+	sheet                    *style.Sheet
+	selected                 func() bool
+	styleFont                rl.Font
+	styleRevision            uint64
+	staticStyle              staticStyle
 }
 
 func (c *component) layoutBase() *BaseNode {
@@ -129,6 +138,7 @@ func (c *component) layoutBase() *BaseNode {
 func Stack(children ...Node) Node {
 	stack := panel(stackLayout{direction: Vertical, gap: stackGap}, children)
 	stack.legacy = true
+	stack.styleName = "stack"
 	return stack
 }
 
@@ -201,7 +211,7 @@ func (c *component) unmount() {
 const (
 	rowHeight     = 48
 	stackGap      = 12
-	fontSize      = 24
+	fontSize      = 18
 	letterSpacing = 1
 )
 
@@ -209,20 +219,20 @@ func (c *component) buttonAt(point rl.Vector2) *component {
 	return nearestButton(hitNode(c, point))
 }
 
-func (c *component) paint(canvas *draw.Canvas, font rl.Font, hovered, pressed, focused *component, damage *rl.Rectangle) {
+func (c *component) paint(canvas *draw.Canvas, font rl.Font, state paintState, damage *rl.Rectangle) {
 	if c.popup {
 		return
 	}
 	visible := damage == nil || nonempty(intersectRect(c.visualRect(c.bounds), *damage))
-	if visible && (c.custom != nil || c.panel == nil || c.decoration != nil) {
-		c.drawSelf(canvas, font, hovered, pressed, focused)
+	if visible {
+		c.drawSelf(canvas, font, state)
 	}
 	if len(c.children) == 0 {
 		return
 	}
 	paintChildren := func() {
 		for _, child := range c.children {
-			child.paint(canvas, font, hovered, pressed, focused, damage)
+			child.paint(canvas, font, state, damage)
 		}
 	}
 	children := paintChildren
@@ -247,15 +257,18 @@ func (c *component) contentBounds() rl.Rectangle {
 	return snapBounds(inset(c.bounds, c.contentInsets(c.measuredBox)), c.placedScale)
 }
 
-func (c *component) drawSelf(canvas *draw.Canvas, font rl.Font, hovered, pressed, focused *component) {
+func (c *component) drawSelf(canvas *draw.Canvas, font rl.Font, state paintState) {
 	if c.bounds.Width <= 0 || c.bounds.Height <= 0 {
 		return
 	}
+	root := c.styleRoot()
 	ctx := PaintContext{
 		Font:    font,
+		Style:   style.Resolve(c.cssTarget(true, state), standardStyle, root.sheet),
 		canvas:  canvas,
-		hovered: c == hovered, pressed: c == pressed, focused: c == focused,
+		metrics: c.staticStyle.metrics,
 	}
+	c.drawFrame(ctx)
 	if c.custom != nil {
 		canvas.Clip(c.visualRect(c.contentBounds()), func() { renderNode(c, ctx) })
 		return
@@ -267,45 +280,11 @@ func (c *component) Primitives(ctx PaintContext) []Node {
 	if c.custom != nil {
 		return c.custom.Primitives(ctx)
 	}
-	if c.decoration != nil {
-		style := c.decoration
-		return []Node{
-			&RectNode{Rect: c.bounds, Radius: style.Radius, Style: draw.Style{Fill: style.Background}},
-			&RectNode{Rect: inset(c.bounds, UniformInsets(style.Thickness/2)), Radius: max(0, style.Radius-style.Thickness/2),
-				Style: draw.Style{Stroke: draw.Stroke{Color: style.BorderColor, Width: style.Thickness}}},
-		}
-	}
 	if c.panel != nil {
 		return nil
 	}
-	style := textStyle(ctx.Font)
+	style := ctx.TextStyle()
 	var primitives []Node
-	if c.button {
-		fill := rl.DarkBlue
-		switch {
-		case !c.enabledButton():
-			fill = rl.NewColor(57, 64, 76, 255)
-			style.Color = rl.LightGray
-		case ctx.pressed:
-			fill = rl.DarkGray
-		case ctx.hovered:
-			fill = rl.Blue
-		}
-		if c.link {
-			style.Color = rl.SkyBlue
-			if !c.enabledButton() {
-				style.Color = rl.Gray
-			}
-		} else {
-			primitives = append(primitives, &RectNode{Rect: c.bounds, Style: draw.Style{Fill: fill}})
-		}
-		if ctx.focused {
-			primitives = append(primitives, &RectNode{
-				Rect:  inset(c.bounds, UniformInsets(2)),
-				Style: draw.Style{Stroke: draw.Stroke{Color: rl.Gold, Width: 2}},
-			})
-		}
-	}
 	content := c.contentBounds()
 	size := draw.MeasureText(c.text, style)
 	text := &TextNode{

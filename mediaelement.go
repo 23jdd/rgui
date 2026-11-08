@@ -37,7 +37,7 @@ func MediaElement(source MediaBackend, playback *Signal[MediaPlayback]) Node {
 		Button("Pause", func() { playback.Set(MediaPaused) }),
 		Button("Stop", func() { playback.Set(MediaStopped) }),
 	)
-	return DockPanel(true, Docked{Edge: DockBottom, Child: controls}, Docked{Child: surface})
+	return styleName(DockPanel(true, Docked{Edge: DockBottom, Child: controls}, Docked{Child: surface}), "mediaelement")
 }
 
 type mediaSurface struct {
@@ -82,7 +82,7 @@ func (m *mediaSurface) release() {
 
 func (m *mediaSurface) Primitives(ctx PaintContext) []Node {
 	bounds := m.Bounds()
-	nodes := []Node{&RectNode{Rect: bounds, Style: draw.Style{Fill: rl.Black}}}
+	var nodes []Node
 	if m.source != nil {
 		if texture := m.source.VideoTexture(); texture.ID != 0 && texture.Width > 0 && texture.Height > 0 {
 			image := &imageNode{texture: texture, stretch: ImageUniform}
@@ -98,7 +98,7 @@ func (m *mediaSurface) Primitives(ctx PaintContext) []Node {
 	} else if m.applied == MediaPaused {
 		label = "Paused"
 	}
-	style := textStyle(ctx.Font)
+	style := ctx.TextStyle()
 	size := draw.MeasureText(label, style)
 	return append(nodes, &TextNode{Position: rl.Vector2{X: bounds.X + (bounds.Width-size.X)/2, Y: bounds.Y + (bounds.Height-size.Y)/2}, Text: label, Style: style})
 }

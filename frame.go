@@ -47,20 +47,21 @@ func unionRect(a, b rl.Rectangle) rl.Rectangle {
 	return rl.Rectangle{X: x, Y: y, Width: max(a.X+a.Width, b.X+b.Width) - x, Height: max(a.Y+a.Height, b.Y+b.Height) - y}
 }
 
-func (c *component) takeVisualDamage() rl.Rectangle {
+func (c *component) takeVisualDamage(ancestorDisabled bool) (rl.Rectangle, bool) {
 	damage := c.visualRect(c.visualDamage)
 	c.visualDamage = rl.Rectangle{}
-	if c.button {
-		disabled := !c.enabledButton()
-		if disabled != c.lastDisabled {
-			damage = unionRect(damage, c.visualRect(c.bounds))
-			c.lastDisabled = disabled
-		}
+	disabled := ancestorDisabled || c.layoutBase().Input.Disabled || c.button && c.onClick == nil
+	changed := disabled != c.lastDisabled
+	if changed {
+		damage = unionRect(damage, c.visualRect(c.bounds))
+		c.lastDisabled = disabled
 	}
 	for _, child := range c.children {
-		damage = unionRect(damage, child.takeVisualDamage())
+		childDamage, childChanged := child.takeVisualDamage(disabled)
+		damage = unionRect(damage, childDamage)
+		changed = changed || childChanged
 	}
-	return damage
+	return damage, changed
 }
 
 type paintState struct{ hovered, pressed, focused *component }

@@ -70,26 +70,27 @@ func (n *choice) KeyUp(e *InputEvent) {
 
 func (n *choice) Primitives(ctx PaintContext) []Node {
 	bounds := n.Bounds()
+	text := ctx.TextStyle()
 	mark := rl.Rectangle{X: bounds.X + 5, Y: bounds.Y + (bounds.Height-18)/2, Width: 18, Height: 18}
-	border := rl.LightGray
+	border := ctx.color("--border", rl.LightGray)
 	if n.focused {
-		border = rl.Gold
+		border = ctx.color("--focus", rl.Gold)
 	}
 	radius := float32(3)
 	if n.radio {
 		radius = 9
 	}
 	nodes := []Node{
-		&RectNode{Rect: mark, Radius: radius, Style: draw.Style{Fill: rl.DarkGray, Stroke: draw.Stroke{Color: border, Width: 1}}},
-		&TextNode{Position: rl.Vector2{X: bounds.X + 31, Y: bounds.Y + (bounds.Height-fontSize)/2}, Text: n.label, Style: textStyle(ctx.Font)},
+		&RectNode{Rect: mark, Radius: radius, Style: draw.Style{Fill: ctx.color("--field", rl.DarkGray), Stroke: draw.Stroke{Color: border, Width: 1}}},
+		&TextNode{Position: rl.Vector2{X: bounds.X + 31, Y: bounds.Y + (bounds.Height-text.Size)/2}, Text: n.label, Style: text},
 	}
 	if n.checked() {
 		if n.radio {
-			nodes = append(nodes, &RectNode{Rect: inset(mark, UniformInsets(4)), Radius: 5, Style: draw.Style{Fill: rl.SkyBlue}})
+			nodes = append(nodes, &RectNode{Rect: inset(mark, UniformInsets(4)), Radius: 5, Style: draw.Style{Fill: ctx.color("--accent", rl.SkyBlue)}})
 		} else {
 			nodes = append(nodes, DrawNode(func(PaintContext) {
 				draw.Polyline([]rl.Vector2{{X: mark.X + 4, Y: mark.Y + 9}, {X: mark.X + 8, Y: mark.Y + 13}, {X: mark.X + 14, Y: mark.Y + 5}},
-					false, draw.Stroke{Color: rl.SkyBlue, Width: 2})
+					false, draw.Stroke{Color: ctx.color("--accent", rl.SkyBlue), Width: 2})
 			}))
 		}
 	}

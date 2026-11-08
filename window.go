@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"image/color"
 
+	"rgui/style"
+
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -22,8 +24,9 @@ type WindowConfig struct {
 	Borderless  bool // Hide the native window decorations.
 	AlwaysOnTop bool
 	VSync       bool
-	TargetFPS   int32       // Zero uses 60 FPS; -1 removes the frame-rate cap.
-	Background  *color.RGBA // Nil uses the default dark background.
+	TargetFPS   int32        // Zero uses 60 FPS; -1 removes the frame-rate cap.
+	Background  *color.RGBA  // Nil uses the stylesheet's window background.
+	StyleSheet  *style.Sheet // Optional author CSS over the default theme.
 
 	// RetainedRendering reuses the last painted scene. Custom nodes should
 	// invalidate their visual when their paint output changes.
@@ -58,7 +61,7 @@ func (config WindowConfig) settings() (windowSettings, error) {
 		maxWidth: config.MaxWidth, maxHeight: config.MaxHeight,
 		flags:      rl.FlagWindowHighdpi,
 		fps:        config.TargetFPS,
-		background: rl.NewColor(23, 28, 38, 255),
+		background: windowBackground(config.StyleSheet),
 	}
 	if !config.FixedSize {
 		settings.flags |= rl.FlagWindowResizable

@@ -53,7 +53,7 @@ func calendar(selected, month *Signal[time.Time], onSelect func()) Node {
 		}
 		cells = append(cells, Cell{Row: 1 + i/7, Column: i % 7, Child: day})
 	}
-	return StackPanel(Vertical, 2, header, Grid(rows, columns, cells...))
+	return styleName(StackPanel(Vertical, 2, header, Grid(rows, columns, cells...)), "calendar")
 }
 
 func monthStart(date time.Time) time.Time {

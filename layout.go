@@ -150,7 +150,7 @@ func (c *component) measure(available rl.Vector2, text measureText) rl.Vector2 {
 	var desired rl.Vector2
 	if c.custom != nil {
 		desired = c.custom.Measure(MeasureContext{
-			Available: rl.Vector2{X: content.Width, Y: content.Height}, MeasureText: text,
+			Available: rl.Vector2{X: content.Width, Y: content.Height}, MeasureText: c.styledMeasure(text),
 		})
 	}
 	if c.panel != nil {
@@ -165,7 +165,7 @@ func (c *component) measure(available rl.Vector2, text measureText) rl.Vector2 {
 		children := c.panel.measure(c.children, rl.Vector2{X: content.Width, Y: content.Height}, measure)
 		desired.X, desired.Y = max(desired.X, children.X), max(desired.Y, children.Y)
 	} else if c.custom == nil {
-		desired = text(c.text)
+		desired = c.styledMeasure(text)(c.text)
 		if c.button {
 			desired.X += 24
 			desired.Y = max(desired.Y, rowHeight)
@@ -270,7 +270,7 @@ func (c *component) invalidatePlace() {
 }
 
 func (c *component) syncLayoutProperties() {
-	box := c.layoutBase().Box
+	box := c.styledBox(c.layoutBase().Box)
 	old := c.measuredBox
 	if old != box {
 		c.measuredBox = box

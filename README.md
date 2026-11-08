@@ -22,7 +22,8 @@ go run ./examples/counter
 | `MinWidth`、`MinHeight`、`MaxWidth`、`MaxHeight` | 分轴设置缩放范围。最小值为零时采用默认值，最大值为零时该轴无上限。 |
 | `FixedSize`、`Borderless`、`AlwaysOnTop` | 分别控制禁止手动缩放、隐藏原生边框和标题栏、窗口置顶。 |
 | `VSync`、`TargetFPS` | 启用垂直同步并设置帧率上限。上限为零时使用默认 60 FPS，设为 -1 时取消帧率上限。 |
-| `Background` | 可选的 `*color.RGBA`，用于清除每帧背景。 |
+| `Background` | 可选的 `*color.RGBA`，覆盖样式表指定的窗口背景。 |
+| `StyleSheet` | 可选的 `*style.Sheet`，覆盖内置控件主题。 |
 
 运行 `go run ./examples/layout` 可查看 560 × 340 的初始窗口、缩放范围和自定义背景。无边框窗口仍可用 Esc 关闭。
 
@@ -126,7 +127,7 @@ go run ./examples/primitives
 
 ## 焦点和键盘输入
 
-- 点击可用按钮时取得焦点。按 Tab 或 Shift+Tab 按组件声明顺序循环切换，跳过禁用和完全位于窗口外的按钮。焦点按钮显示金色边框。
+- 点击可用按钮时取得焦点。按 Tab 或 Shift+Tab 按组件声明顺序循环切换，跳过禁用和完全位于窗口外的按钮。焦点按钮按主题显示焦点边框。
 - 聚焦按钮在释放 Space 或 Enter 时执行同一个点击回调。按住时不会连发，切换焦点或窗口失焦会取消未完成的按键操作。窗口失焦也会取消未完成的鼠标点击。
 - 使用 `WithDisabled(button, true)` 禁用按钮。布局示例中的 `Item 6` 用于验证禁用行为。
 
@@ -221,6 +222,51 @@ type Node interface {
 | 媒体和墨迹 | `Image`、`MediaElement`、`SoundPlayerAction`、`InkCanvas`、`InkPresenter`。`MusicMedia` 支持 raylib 音频流，视频由应用提供 `MediaBackend`。墨迹使用主指针记录轨迹。 |
 
 这些接口覆盖目录中的基础行为。WPF 的 XAML、控件模板、XPS 文档格式和 Windows 视频解码属于不同层的能力。
+
+## 控件样式和 CSS 转换
+
+`rgui/style` 将 CSS 转成窗口使用的样式表。内置主题集中定义控件底色、文字、边框、焦点和选中状态。`WindowConfig.StyleSheet` 在内置主题之上应用应用规则，同一张表中按选择器优先级和声明顺序取值。控件树继续使用 `Measure` 和 `Place`。 [CSS 选择器](https://www.w3.org/TR/selectors/) · [CSS 层叠](https://www.w3.org/TR/css-cascade/)
+
+```go
+import (
+    "rgui"
+    "rgui/style"
+)
+
+func run() error {
+    sheet, err := style.ParseCSS(`
+        :root { --accent: #2760aa; font-size: 16px; }
+        button.primary {
+            background: var(--accent);
+            color: white;
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            min-width: 120px;
+        }
+        button.primary:hover { background: #1e4c89; }
+        #name:focus { border-color: var(--accent); }
+    `)
+    if err != nil {
+        return err
+    }
+    return rgui.Run(rgui.WindowConfig{Title: "Profile", StyleSheet: sheet}, func() rgui.Node {
+        return rgui.Stack(
+            rgui.WithStyle(rgui.TextBox(nil), rgui.StyleOptions{ID: "name"}),
+            rgui.WithStyle(rgui.Button("Save", func() {}), rgui.StyleOptions{Classes: []string{"primary"}}),
+        )
+    })
+}
+```
+
+- **双向转换**。`style.ParseCSS(css)` 导入 CSS，`sheet.Rules()` 转成可编辑的 `[]style.Rule`，`style.NewSheet(rules)` 从 Go 规则建表，`sheet.CSS()` 导出规范化 CSS。导出会展开逗号分组并省略原始注释。`rgui.DefaultStyleSheet().CSS()` 可查看内置主题。
+- **选择器**。支持控件类型、`#id`、`.class`、`*`、逗号分组、后代和直接子级。内置控件使用小写构造函数名，如 `textbox`、`groupbox`、`datagrid`。用 `popup > *` 匹配弹层内容，用 `.tab` 匹配标签页按钮。原生对话框的触发按钮可用 `.openfiledialog`、`.savefiledialog` 或 `.printdialog` 匹配。对话框内部由操作系统绘制。`WithStyle` 和自定义节点的 `BaseNode.Appearance` 可指定类型、ID 和类名。
+- **状态**。支持 `:hover`、`:active`、`:focus`、`:focus-visible`、`:disabled`、`:checked`、`:selected`。`:focus-visible` 使用同一焦点状态。`:checked` 匹配复选和单选控件，`:selected` 匹配选中的标签页按钮和列表视图行。状态规则用于绘制，尺寸和文字度量使用常态规则。
+- **属性**。支持 `color`、`font-size`、`letter-spacing`、纯色 `background` 或 `background-color`、`border-color`、`border-width`、`border-radius`、`border-style: solid/none`、`border: <px> solid <color>`、`caret-color`、`margin`、`padding` 和宽高及其最小最大值。边框绘制在控件边缘内。长度用逻辑像素 `px`，颜色支持十六进制、`rgb()`、`rgba()` 和常用名称。
+- **主题变量**。在 `:root` 声明 `--accent`、`--text`、`--surface`、`--field`、`--track`、`--border`、`--selection`、`--focus` 等变量，可同时改变多个控件。自定义节点用 `PaintContext.Style` 读取属性或变量，用 `PaintContext.TextStyle()` 获取文字样式。字体文件通过 `WindowConfig.FontPath` 选择。
+
+样式表支持 CSS 子集。浏览器布局、百分比长度、`@` 规则和 `!important` 当前未接入。未识别的属性可保留在规则中，绘制时由控件决定是否读取。
+
+运行 `go run ./examples/controls` 查看浅色主题和两列控件布局。主题位于 `examples/controls/theme.css`。
 
 ## 每次改动的工作流
 

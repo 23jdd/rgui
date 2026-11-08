@@ -11,7 +11,7 @@ type FileDialogOptions struct {
 // OpenFileDialog creates a button that opens a native file picker. The
 // callback receives a path or an error. Cancel leaves it uncalled.
 func OpenFileDialog(label string, options FileDialogOptions, result func(string, error)) Node {
-	return fileDialogButton(label, options, false, result)
+	return WithStyle(fileDialogButton(label, options, false, result), StyleOptions{Classes: []string{"openfiledialog"}})
 }
 
 func fileDialogButton(label string, options FileDialogOptions, save bool, result func(string, error)) Node {

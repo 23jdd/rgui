@@ -1,10 +1,6 @@
 package rgui
 
-import (
-	"rgui/draw"
-
-	rl "github.com/gen2brain/raylib-go/raylib"
-)
+import rl "github.com/gen2brain/raylib-go/raylib"
 
 // ScrollBar edits a scroll position. Page is the viewport length in the same
 // units as the value. Direction selects the movement axis.
@@ -108,8 +104,4 @@ func (b *scrollBar) KeyDown(e *InputEvent) {
 	}
 	b.set(value)
 	e.Handled = true
-}
-
-func (b *scrollBar) Primitives(PaintContext) []Node {
-	return []Node{&RectNode{Rect: b.Bounds(), Radius: 3, Style: draw.Style{Fill: rl.DarkGray}}}
 }

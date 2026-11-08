@@ -1,10 +1,6 @@
 package rgui
 
-import (
-	"slices"
-
-	rl "github.com/gen2brain/raylib-go/raylib"
-)
+import "slices"
 
 // ComboBox displays a selected label and opens a list of choices. The signal
 // holds a zero-based index, or -1 for no selection.
@@ -34,7 +30,7 @@ func ComboBox(items []string, selected *Signal[int]) Node {
 	for i, item := range items {
 		rows[i] = Button(item, func() { selected.Set(i); open.Set(false) })
 	}
-	content := Border(ScrollViewer(StackPanel(Vertical, 2, rows...), nil, false, true),
-		BorderStyle{Background: rl.NewColor(34, 41, 54, 255), BorderColor: rl.Gray, Thickness: 1, Padding: UniformInsets(4)})
-	return StackPanel(Vertical, 0, trigger, transientPopup(content, open, trigger, nil))
+	content := styleName(Border(ScrollViewer(StackPanel(Vertical, 2, rows...), nil, false, true),
+		BorderStyle{Thickness: 1, Padding: UniformInsets(4)}), "combosurface")
+	return styleName(StackPanel(Vertical, 0, trigger, transientPopup(content, open, trigger, nil)), "combobox")
 }

@@ -85,10 +85,10 @@ func (t *thumb) KeyDown(e *InputEvent) {
 
 func (t *thumb) KeyRepeat(e *InputEvent) { t.KeyDown(e) }
 
-func (t *thumb) Primitives(PaintContext) []Node {
-	fill := rl.Gray
+func (t *thumb) Primitives(ctx PaintContext) []Node {
+	fill := ctx.color("--thumb-color", ctx.color("--border", rl.Gray))
 	if t.dragging {
-		fill = rl.SkyBlue
+		fill = ctx.color("--accent", rl.SkyBlue)
 	}
 	return []Node{&RectNode{Rect: t.Bounds(), Radius: 2, Style: draw.Style{Fill: fill}}}
 }

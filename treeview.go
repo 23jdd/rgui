@@ -51,5 +51,5 @@ func TreeView(items []TreeItem, selected *Signal[string]) Node {
 		}
 		return nodes
 	}
-	return ScrollViewer(StackPanel(Vertical, 2, build(items)...), nil, false, true)
+	return styleName(ScrollViewer(StackPanel(Vertical, 2, build(items)...), nil, false, true), "treeview")
 }

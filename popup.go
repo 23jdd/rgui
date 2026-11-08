@@ -21,6 +21,7 @@ func Popup(content Node, open *Signal[bool]) Node {
 		return -1
 	}, []Node{content}))
 	node.popup = true
+	node.styleName = "popup"
 	node.panel = popupLayout{owner: node}
 	return node
 }
@@ -106,11 +107,11 @@ func popupLayers(node *component, layers []*component) []*component {
 	return layers
 }
 
-func (c *component) paintScene(canvas *draw.Canvas, font rl.Font, hovered, pressed, focused *component, damage *rl.Rectangle) {
-	c.paint(canvas, font, hovered, pressed, focused, damage)
+func (c *component) paintScene(canvas *draw.Canvas, font rl.Font, state paintState, damage *rl.Rectangle) {
+	c.paint(canvas, font, state, damage)
 	for _, layer := range popupLayers(c, nil) {
 		for _, child := range layer.children {
-			child.paint(canvas, font, hovered, pressed, focused, damage)
+			child.paint(canvas, font, state, damage)
 		}
 	}
 }

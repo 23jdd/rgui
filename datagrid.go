@@ -14,5 +14,5 @@ func DataGrid(columns []GridViewColumn, rows [][]*Signal[string]) Node {
 		}
 		items = append(items, Grid([]Track{Fixed(42)}, tracks, cells...))
 	}
-	return ScrollViewer(StackPanel(Vertical, 2, items...), nil, true, true)
+	return styleName(ScrollViewer(StackPanel(Vertical, 2, items...), nil, true, true), "datagrid")
 }

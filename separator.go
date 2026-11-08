@@ -24,7 +24,7 @@ func (s *separator) Measure(MeasureContext) rl.Vector2 {
 	return s.direction.size(0, s.thickness)
 }
 
-func (s *separator) Primitives(PaintContext) []Node {
+func (s *separator) Primitives(ctx PaintContext) []Node {
 	line := s.Bounds()
 	if s.direction == Horizontal {
 		size := min(s.thickness, line.Height)
@@ -35,5 +35,5 @@ func (s *separator) Primitives(PaintContext) []Node {
 		line.X += (line.Width - size) / 2
 		line.Width = size
 	}
-	return []Node{&RectNode{Rect: line, Style: draw.Style{Fill: s.color}}}
+	return []Node{&RectNode{Rect: line, Style: draw.Style{Fill: ctx.color("--separator-color", s.color)}}}
 }

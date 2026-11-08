@@ -122,18 +122,18 @@ func (s *slider) KeyDown(e *InputEvent) {
 	e.Handled = true
 }
 
-func (s *slider) Primitives(PaintContext) []Node {
+func (s *slider) Primitives(ctx PaintContext) []Node {
 	track := s.track()
 	fill := track
 	fill.Width *= float32((rangeValue(s.value.Get(), s.minimum, s.maximum) - s.minimum) / (s.maximum - s.minimum))
 	thumb := rl.Rectangle{X: track.X + fill.Width - sliderThumb/2, Y: track.Y + (track.Height-sliderThumb)/2, Width: sliderThumb, Height: sliderThumb}
-	color := rl.RayWhite
+	color := ctx.color("--thumb-color", ctx.TextStyle().Color)
 	if s.focused {
-		color = rl.Gold
+		color = ctx.color("--focus", rl.Gold)
 	}
 	return []Node{
-		&RectNode{Rect: track, Radius: 2, Style: draw.Style{Fill: rl.DarkGray}},
-		&RectNode{Rect: fill, Radius: 2, Style: draw.Style{Fill: rl.SkyBlue}},
+		&RectNode{Rect: track, Radius: 2, Style: draw.Style{Fill: ctx.color("--track", rl.DarkGray)}},
+		&RectNode{Rect: fill, Radius: 2, Style: draw.Style{Fill: ctx.color("--accent", rl.SkyBlue)}},
 		&RectNode{Rect: thumb, Radius: sliderThumb / 2, Style: draw.Style{Fill: color}},
 	}
 }

@@ -74,6 +74,7 @@ func (c *component) replaceChildren(nodes []Node) error {
 	if slices.Equal(c.children, next) {
 		return nil
 	}
+	root.styleRevision++
 	for _, child := range c.children {
 		if !slices.Contains(next, child) {
 			if child.pending != nil {

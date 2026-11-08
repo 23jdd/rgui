@@ -35,7 +35,7 @@ const editInset = 10
 
 func (b *textBox) Measure(ctx MeasureContext) rl.Vector2 {
 	b.measureText = ctx.MeasureText
-	return rl.Vector2{X: min(300, ctx.Available.X), Y: 42}
+	return rl.Vector2{X: min(300, ctx.Available.X), Y: max(42, b.textMetrics().size+12)}
 }
 
 func (b *textBox) FocusGained(e *InputEvent) {
@@ -253,10 +253,11 @@ func (b *textBox) scrollToCaret(caret, total float32) {
 }
 
 func (b *textBox) IMECaret() rl.Rectangle {
+	size := b.textMetrics().size
 	line, cursor, _, _ := b.display(b.read())
 	x := b.width(line[:cursor])
 	b.scrollToCaret(x, b.width(line))
-	return rl.Rectangle{X: editInset + x - b.scroll, Y: (b.Bounds().Height - fontSize) / 2, Width: 1, Height: fontSize}
+	return rl.Rectangle{X: editInset + x - b.scroll, Y: (b.Bounds().Height - size) / 2, Width: 1, Height: size}
 }
 
 func (b *textBox) Primitives(ctx PaintContext) []Node {
@@ -264,31 +265,26 @@ func (b *textBox) Primitives(ctx PaintContext) []Node {
 	before, _ := b.selection()
 	line, cursor, start, end := b.display(text)
 	bounds := b.Bounds()
+	style := ctx.TextStyle()
 	caret := b.width(line[:cursor])
 	b.scrollToCaret(caret, b.width(line))
-	x, y := bounds.X+editInset-b.scroll, bounds.Y+(bounds.Height-fontSize)/2
-	border := rl.Gray
-	if b.focused {
-		border = rl.SkyBlue
-	}
-	nodes := []Node{&RectNode{Rect: bounds, Radius: 5, Style: draw.Style{
-		Fill: rl.DarkGray, Stroke: draw.Stroke{Color: border, Width: 1},
-	}}}
+	x, y := bounds.X+editInset-b.scroll, bounds.Y+(bounds.Height-style.Size)/2
+	var nodes []Node
 	if b.focused && start != end {
 		left, right := b.width(line[:start]), b.width(line[:end])
-		nodes = append(nodes, &RectNode{Rect: rl.Rectangle{X: x + left, Y: y, Width: right - left, Height: fontSize},
-			Style: draw.Style{Fill: rl.DarkBlue}})
+		nodes = append(nodes, &RectNode{Rect: rl.Rectangle{X: x + left, Y: y, Width: right - left, Height: style.Size},
+			Style: draw.Style{Fill: ctx.color("--selection", rl.DarkBlue)}})
 	}
-	nodes = append(nodes, &TextNode{Position: rl.Vector2{X: x, Y: y}, Text: string(line), Style: textStyle(ctx.Font)})
+	nodes = append(nodes, &TextNode{Position: rl.Vector2{X: x, Y: y}, Text: string(line), Style: style})
 	if b.preedit.Text != "" {
 		left := b.width(line[:before])
 		right := b.width(line[:before+len([]rune(b.preedit.Text))])
-		nodes = append(nodes, &RectNode{Rect: rl.Rectangle{X: x + left, Y: y + fontSize - 1, Width: right - left, Height: 1},
-			Style: draw.Style{Fill: rl.SkyBlue}})
+		nodes = append(nodes, &RectNode{Rect: rl.Rectangle{X: x + left, Y: y + style.Size - 1, Width: right - left, Height: 1},
+			Style: draw.Style{Fill: ctx.color("--accent", rl.SkyBlue)}})
 	}
 	if b.focused {
-		nodes = append(nodes, &RectNode{Rect: rl.Rectangle{X: x + caret, Y: y, Width: 1, Height: fontSize},
-			Style: draw.Style{Fill: rl.RayWhite}})
+		nodes = append(nodes, &RectNode{Rect: rl.Rectangle{X: x + caret, Y: y, Width: 1, Height: style.Size},
+			Style: draw.Style{Fill: ctx.color("caret-color", style.Color)}})
 	}
 	return nodes
 }

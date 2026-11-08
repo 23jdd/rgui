@@ -1,10 +1,6 @@
 package rgui
 
-import (
-	"time"
-
-	rl "github.com/gen2brain/raylib-go/raylib"
-)
+import "time"
 
 // DatePicker opens a calendar and displays the selected date. A zero date
 // represents no selection.
@@ -27,8 +23,8 @@ func DatePicker(selected *Signal[time.Time]) Node {
 		}
 		return "Choose date v"
 	}
-	content := Border(calendar(selected, month, func() { open.Set(false) }), BorderStyle{
-		Background: rl.NewColor(34, 41, 54, 255), BorderColor: rl.Gray, Thickness: 1, Padding: UniformInsets(4),
-	})
-	return StackPanel(Vertical, 0, button, transientPopup(WithLayout(content, Box{MinWidth: 252}), open, button, nil))
+	content := styleName(Border(calendar(selected, month, func() { open.Set(false) }),
+		BorderStyle{Thickness: 1, Padding: UniformInsets(4)}), "calendarsurface")
+	return styleName(StackPanel(Vertical, 0, button,
+		transientPopup(WithLayout(content, Box{MinWidth: 252, Padding: UniformInsets(4)}), open, button, nil)), "datepicker")
 }

@@ -1,8 +1,6 @@
 package rgui
 
 import (
-	"rgui/draw"
-
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
@@ -31,9 +29,10 @@ func ListView(columns []GridViewColumn, rows [][]string, selected *Signal[int]) 
 		}
 		item := &listViewRow{index: i, selected: selected}
 		item.Height = 36
+		item.Input.Focusable = true
 		items = append(items, WithChildren(item, Grid([]Track{Fixed(36)}, tracks, cells...)))
 	}
-	return ScrollViewer(StackPanel(Vertical, 2, items...), nil, true, true)
+	return styleName(ScrollViewer(StackPanel(Vertical, 2, items...), nil, true, true), "listview")
 }
 
 func gridViewHeader(columns []GridViewColumn) ([]Track, Node) {
@@ -50,14 +49,13 @@ func gridViewHeader(columns []GridViewColumn) ([]Track, Node) {
 		tracks[col] = Fixed(width)
 		cells[col] = Cell{Column: col, Child: Text(func() string { return column.Header })}
 	}
-	return tracks, Border(Grid([]Track{Fixed(36)}, tracks, cells...), BorderStyle{Background: rl.DarkGray})
+	return tracks, styleName(Grid([]Track{Fixed(36)}, tracks, cells...), "tableheader")
 }
 
 type listViewRow struct {
 	BaseNode
 	index    int
 	selected *Signal[int]
-	focused  bool
 }
 
 func (r *listViewRow) bind(pending subscriptions) *binding {
@@ -69,16 +67,4 @@ func (r *listViewRow) KeyDown(e *InputEvent) {
 		r.selected.Set(r.index)
 		e.Handled = true
 	}
-}
-func (r *listViewRow) FocusGained(*InputEvent) { r.focused = true; r.InvalidateVisual() }
-func (r *listViewRow) FocusLost(*InputEvent)   { r.focused = false; r.InvalidateVisual() }
-func (r *listViewRow) Primitives(PaintContext) []Node {
-	style := draw.Style{}
-	if r.selected.Get() == r.index {
-		style.Fill = rl.DarkBlue
-	}
-	if r.focused {
-		style.Stroke = draw.Stroke{Color: rl.Gold, Width: 1}
-	}
-	return []Node{&RectNode{Rect: r.Bounds(), Style: style}}
 }

@@ -52,5 +52,5 @@ func GridSplitter(direction Direction, size *Signal[float32], minimum, maximum f
 		}
 		e.Handled = true
 	}
-	return handle
+	return styleName(handle, "gridsplitter")
 }

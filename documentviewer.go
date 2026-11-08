@@ -16,7 +16,7 @@ func DocumentViewer(pages []Node, index *Signal[int]) Node {
 		pages[i] = ScrollViewer(page, nil, true, true)
 	}
 	count := func() int { return len(pages) }
-	return documentControls(index, count, newContentSwitch(func() int { return documentIndex(index.Get(), count()) }, pages))
+	return styleName(documentControls(index, count, newContentSwitch(func() int { return documentIndex(index.Get(), count()) }, pages)), "documentviewer")
 }
 
 func documentIndex(index, count int) int {

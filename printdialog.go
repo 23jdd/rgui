@@ -11,5 +11,5 @@ type PrintSettings struct {
 // PrintDialog opens the system printer picker. The callback renders the job
 // using the selected device context. Cancel leaves it uncalled.
 func PrintDialog(label string, result func(PrintSettings, error)) Node {
-	return Button(label, func() { showPrintDialog(result) })
+	return WithStyle(Button(label, func() { showPrintDialog(result) }), StyleOptions{Classes: []string{"printdialog"}})
 }

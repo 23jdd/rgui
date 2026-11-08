@@ -19,7 +19,7 @@ func Expander(header string, content Node, expanded *Signal[bool]) Node {
 		}
 		return -1
 	}, []Node{content})
-	return StackPanel(Vertical, 0, button, body)
+	return styleName(StackPanel(Vertical, 0, button, body), "expander")
 }
 
 type contentSwitch struct {

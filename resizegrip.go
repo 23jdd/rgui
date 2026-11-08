@@ -26,7 +26,7 @@ func ResizeGrip() Node {
 	handle.desired = rl.Vector2{X: 18, Y: 18}
 	handle.HorizontalAlignment = End
 	handle.VerticalAlignment = End
-	return handle
+	return styleName(handle, "resizegrip")
 }
 
 func resizeDimensions(start, delta, scale rl.Vector2) rl.Vector2 {

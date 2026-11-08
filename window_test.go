@@ -16,7 +16,7 @@ func TestDefaultWindowSettings(t *testing.T) {
 	want := windowSettings{
 		width: 480, height: 300, minWidth: 240, minHeight: 160,
 		flags: rl.FlagWindowHighdpi | rl.FlagWindowResizable, fps: 60,
-		background: color.RGBA{R: 23, G: 28, B: 38, A: 255},
+		background: color.RGBA{R: 20, G: 26, B: 36, A: 255},
 	}
 	if got != want {
 		t.Fatalf("default settings = %+v, want %+v", got, want)

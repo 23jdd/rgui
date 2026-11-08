@@ -29,7 +29,8 @@ func (n *RectNode) Draw(PaintContext) {
 
 // TextNode draws text at Position in a paint list or at the assigned origin
 // when it participates in layout. Without a Style.Font it uses the window's
-// default font, size and spacing.
+// font and the node's resolved size and spacing. A nonzero Color overrides
+// the resolved text color.
 type TextNode struct {
 	BaseNode
 	Position rl.Vector2
@@ -41,7 +42,7 @@ func (n *TextNode) Measure(ctx MeasureContext) rl.Vector2 {
 	if n.Style.Font.BaseSize == 0 {
 		return ctx.MeasureText(n.Text)
 	}
-	return draw.MeasureText(n.Text, n.textStyle(n.Style.Font))
+	return draw.MeasureText(n.Text, n.textStyle(textStyle(n.Style.Font)))
 }
 
 func (n *TextNode) Draw(ctx PaintContext) {
@@ -50,15 +51,16 @@ func (n *TextNode) Draw(ctx PaintContext) {
 		bounds := n.Bounds()
 		position = rl.Vector2{X: bounds.X, Y: bounds.Y}
 	}
-	draw.Text(position, n.Text, n.textStyle(ctx.Font))
+	draw.Text(position, n.Text, n.textStyle(ctx.TextStyle()))
 }
 
-func (n *TextNode) textStyle(font rl.Font) draw.TextStyle {
+func (n *TextNode) textStyle(fallback draw.TextStyle) draw.TextStyle {
 	style := n.Style
 	if style.Font.BaseSize == 0 {
-		style.Font = font
-		style.Size = fontSize
-		style.Spacing = letterSpacing
+		if style.Color != (draw.TextStyle{}).Color {
+			fallback.Color = style.Color
+		}
+		return fallback
 	}
 	if style.Size <= 0 {
 		style.Size = fontSize

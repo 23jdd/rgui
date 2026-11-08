@@ -1,7 +1,5 @@
 package rgui
 
-import rl "github.com/gen2brain/raylib-go/raylib"
-
 // MenuItem is an action in a menu.
 type MenuItem struct {
 	Label    string
@@ -33,7 +31,7 @@ func Menu(groups ...MenuGroup) Node {
 		popup := transientPopup(content, open[i], trigger, nil)
 		menus[i] = StackPanel(Vertical, 0, trigger, popup)
 	}
-	return StackPanel(Horizontal, 2, menus...)
+	return styleName(StackPanel(Horizontal, 2, menus...), "menu")
 }
 
 func menuContent(items []MenuItem, dismiss func()) Node {
@@ -47,7 +45,6 @@ func menuContent(items []MenuItem, dismiss func()) Node {
 		})
 		children = append(children, WithDisabled(button, item.Disabled))
 	}
-	return Border(ScrollViewer(StackPanel(Vertical, 2, children...), nil, false, true), BorderStyle{
-		Background: rl.NewColor(34, 41, 54, 255), BorderColor: rl.Gray, Thickness: 1, Padding: UniformInsets(4),
-	})
+	return styleName(Border(ScrollViewer(StackPanel(Vertical, 2, children...), nil, false, true),
+		BorderStyle{Thickness: 1, Padding: UniformInsets(4)}), "menusurface")
 }

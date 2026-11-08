@@ -233,9 +233,9 @@ func (b *richTextBox) editKey(e *InputEvent) {
 			target := positions[b.caret]
 			switch e.Key {
 			case rl.KeyUp:
-				target.Y -= fontSize
+				target.Y -= b.textMetrics().size
 			case rl.KeyDown:
-				target.Y += fontSize
+				target.Y += b.textMetrics().size
 			case rl.KeyHome:
 				target.X = 0
 			case rl.KeyEnd:
@@ -269,21 +269,22 @@ func (b *richTextBox) glyphWidth(ch rune) float32 {
 	if b.measureText == nil || ch == '\n' {
 		return 0
 	}
-	return b.measureText(string(ch)).X + letterSpacing
+	return b.measureText(string(ch)).X + b.textMetrics().spacing
 }
 
 func (b *richTextBox) positions(glyphs []richGlyph) []rl.Vector2 {
 	limit := max(1, b.Bounds().Width-2*editInset)
+	size := b.textMetrics().size
 	positions := make([]rl.Vector2, len(glyphs)+1)
 	var current rl.Vector2
 	for i, glyph := range glyphs {
 		width := b.glyphWidth(glyph.char)
 		if glyph.char != '\n' && current.X > 0 && current.X+width > limit {
-			current = rl.Vector2{Y: current.Y + fontSize}
+			current = rl.Vector2{Y: current.Y + size}
 		}
 		positions[i] = current
 		if glyph.char == '\n' {
-			current = rl.Vector2{Y: current.Y + fontSize}
+			current = rl.Vector2{Y: current.Y + size}
 		} else {
 			current.X += width
 		}
@@ -307,7 +308,7 @@ func nearestTextPosition(positions []rl.Vector2, target rl.Vector2) int {
 func (b *richTextBox) positionPointer(point rl.Vector2) {
 	b.read()
 	local := b.localPointer(point)
-	b.caret = nearestTextPosition(b.positions(b.glyphs), rl.Vector2{X: local.X - editInset, Y: local.Y - editInset + b.scroll - fontSize/2})
+	b.caret = nearestTextPosition(b.positions(b.glyphs), rl.Vector2{X: local.X - editInset, Y: local.Y - editInset + b.scroll - b.textMetrics().size/2})
 	b.InvalidateVisual()
 }
 
@@ -343,15 +344,16 @@ func (b *richTextBox) display() ([]richGlyph, int, int, int) {
 
 func (b *richTextBox) caretPosition(positions []rl.Vector2, index int) rl.Vector2 {
 	caret := positions[index]
-	height := max(fontSize, b.Bounds().Height-2*editInset)
-	b.scroll = max(0, min(max(0, positions[len(positions)-1].Y+fontSize-height), max(caret.Y+fontSize-height, min(caret.Y, b.scroll))))
+	size := b.textMetrics().size
+	height := max(size, b.Bounds().Height-2*editInset)
+	b.scroll = max(0, min(max(0, positions[len(positions)-1].Y+size-height), max(caret.Y+size-height, min(caret.Y, b.scroll))))
 	return rl.Vector2{X: editInset + caret.X, Y: editInset + caret.Y - b.scroll}
 }
 
 func (b *richTextBox) IMECaret() rl.Rectangle {
 	glyphs, cursor, _, _ := b.display()
 	point := b.caretPosition(b.positions(glyphs), cursor)
-	return rl.Rectangle{X: point.X, Y: point.Y, Width: 1, Height: fontSize}
+	return rl.Rectangle{X: point.X, Y: point.Y, Width: 1, Height: b.textMetrics().size}
 }
 
 func (b *richTextBox) Primitives(ctx PaintContext) []Node {
@@ -359,26 +361,24 @@ func (b *richTextBox) Primitives(ctx PaintContext) []Node {
 	positions := b.positions(glyphs)
 	caret := b.caretPosition(positions, cursor)
 	bounds := b.Bounds()
-	border := rl.Gray
-	if b.focused {
-		border = rl.SkyBlue
-	}
-	nodes := []Node{&RectNode{Rect: bounds, Radius: 5, Style: draw.Style{Fill: rl.DarkGray, Stroke: draw.Stroke{Color: border, Width: 1}}}}
+	text := ctx.TextStyle()
+	selection := ctx.color("--selection", rl.DarkBlue)
+	var nodes []Node
 	for i, glyph := range glyphs {
 		y := editInset + positions[i].Y - b.scroll
-		if y+fontSize <= 0 || y >= bounds.Height {
+		if y+text.Size <= 0 || y >= bounds.Height {
 			continue
 		}
 		x := bounds.X + editInset + positions[i].X
 		y += bounds.Y
 		width := b.glyphWidth(glyph.char)
 		if b.focused && i >= start && i < end {
-			nodes = append(nodes, &RectNode{Rect: rl.Rectangle{X: x, Y: y, Width: max(3, width), Height: fontSize}, Style: draw.Style{Fill: rl.DarkBlue}})
+			nodes = append(nodes, &RectNode{Rect: rl.Rectangle{X: x, Y: y, Width: max(3, width), Height: text.Size}, Style: draw.Style{Fill: selection}})
 		}
 		if glyph.char == '\n' {
 			continue
 		}
-		style := textStyle(ctx.Font)
+		style := text
 		if glyph.style.Color != (color.RGBA{}) {
 			style.Color = glyph.style.Color
 		}
@@ -387,11 +387,11 @@ func (b *richTextBox) Primitives(ctx PaintContext) []Node {
 			nodes = append(nodes, &TextNode{Position: rl.Vector2{X: x + 1, Y: y}, Text: string(glyph.char), Style: style})
 		}
 		if glyph.style.Underline {
-			nodes = append(nodes, &RectNode{Rect: rl.Rectangle{X: x, Y: y + fontSize - 1, Width: width, Height: 1}, Style: draw.Style{Fill: style.Color}})
+			nodes = append(nodes, &RectNode{Rect: rl.Rectangle{X: x, Y: y + text.Size - 1, Width: width, Height: 1}, Style: draw.Style{Fill: style.Color}})
 		}
 	}
 	if b.focused {
-		nodes = append(nodes, &RectNode{Rect: rl.Rectangle{X: bounds.X + caret.X, Y: bounds.Y + caret.Y, Width: 1, Height: fontSize}, Style: draw.Style{Fill: rl.RayWhite}})
+		nodes = append(nodes, &RectNode{Rect: rl.Rectangle{X: bounds.X + caret.X, Y: bounds.Y + caret.Y, Width: 1, Height: text.Size}, Style: draw.Style{Fill: ctx.color("caret-color", text.Color)}})
 	}
 	return nodes
 }
