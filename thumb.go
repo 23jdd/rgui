@@ -90,5 +90,5 @@ func (t *thumb) Primitives(ctx PaintContext) []Node {
 	if t.dragging {
 		fill = ctx.color("--accent", rl.SkyBlue)
 	}
-	return []Node{&RectNode{Rect: t.Bounds(), Radius: 2, Style: draw.Style{Fill: fill}}}
+	return []Node{&RectNode{Rect: t.Bounds(), Radius: ctx.Style.Length("--thumb-radius", 2), Style: draw.Style{Fill: fill}}}
 }

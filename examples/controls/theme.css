@@ -1,44 +1,65 @@
+/* PICO-8 palette · https://www.lexaloffle.com/dl/docs/pico-8_manual.html */
 :root {
-  --background: #eff3f8;
-  --surface: #ffffff;
-  --field: #f8fafc;
-  --track: #dde5f0;
-  --border: #c6d1df;
-  --text: #17253b;
-  --muted: #485d79;
-  --accent: #2556a6;
-  --selection: #dbe9fc;
-  --focus: #3264bc;
-  --button: #f3f6fb;
-  --button-hover: #e4edf9;
-  --button-active: #d7e4f8;
-  font-size: 16px;
-  letter-spacing: 0;
+  --background: #1d2b53;
+  --surface: #000000;
+  --field: #1d2b53;
+  --track: #1d2b53;
+  --border: #83769c;
+  --text: #fff1e8;
+  --muted: #c2c3c7;
+  --accent: #29adff;
+  --selection: #ffec27;
+  --focus: #ffec27;
+  --button: #1d2b53;
+  --button-hover: #7e2553;
+  --button-active: #000000;
+  --mark-radius: 0;
+  --track-radius: 0;
+  --thumb-radius: 0;
+  font-size: 20px;
+  letter-spacing: 2px;
 }
 
-.gallery { padding: 20px 24px 16px; }
-.masthead { margin-bottom: 14px; }
-.eyebrow { color: var(--accent); font-size: 12px; letter-spacing: 1px; }
-.title { font-size: 32px; }
-.caption, label, statusbar { color: var(--muted); font-size: 14px; }
+* { border-radius: 0; }
+.gallery { padding: 16px 20px; }
+.masthead, .footer, groupbox { background: var(--surface); border: 2px solid var(--border); }
+.masthead { padding: 8px 12px; margin-bottom: 10px; }
+.title { font-size: 30px; letter-spacing: 3px; }
+.eyebrow { color: var(--accent); }
+.caption, label, .key-hints { color: var(--muted); }
 
-menu { margin-bottom: 8px; }
-tabcontrol > wrappanel { margin-bottom: 12px; }
-button, repeatbutton { height: 36px; }
-button.tab { background: transparent; border-color: transparent; }
+tabcontrol > wrappanel { margin-bottom: 10px; }
+button, repeatbutton { height: 36px; border-width: 2px; }
+button:active, repeatbutton:active { border-width: 4px; }
+button.tab { background: var(--surface); }
 button.tab:hover { background: var(--button-hover); }
-button.tab:selected { background: var(--selection); color: #153d7b; }
-button.tab:focus { border-color: var(--focus); }
+button.tab:selected { background: var(--selection); color: var(--surface); border-color: var(--selection); }
+button.tab:focus { border-color: var(--accent); }
+button.tab:active { border-width: 4px; }
+button.tab:selected:active { background: var(--button-hover); color: var(--text); border-color: var(--selection); }
 
-groupbox { padding: 18px; }
-.group-title { color: #223b5e; font-size: 22px; margin-bottom: 8px; }
-.side-panel { margin-left: 14px; }
-statusbar { margin-top: 14px; padding: 8px 12px; }
+groupbox { padding: 12px; }
+.group-title { background: var(--background); color: var(--selection); padding: 6px 8px; margin-bottom: 4px; }
+.side-panel { margin-left: 12px; }
+.footer { margin-top: 10px; padding: 6px 10px; }
+statusbar { padding: 0; border: none; }
+.ready { color: #00e436; }
 
-textbox, passwordbox { height: 38px; }
-#name:focus { border-color: var(--accent); }
-button.primary { background: #2858a6; border-color: #2858a6; color: white; }
-button.primary:hover { background: #204985; }
-button.primary:active { background: #183a70; }
-button.primary:focus { border-color: #173662; }
+textbox, passwordbox, richtextbox, inkcanvas, toolbar, menusurface, tooltipsurface, combosurface, calendarsurface, tableheader {
+  border-width: 2px;
+}
+textbox, passwordbox { height: 34px; }
+textbox, passwordbox, richtextbox { --selection: #7e2553; }
+textbox:focus, passwordbox:focus, richtextbox:focus { border-color: var(--focus); }
+checkbox, radiobutton { --accent: #00e436; }
+slider { --thumb-color: var(--text); }
+progressbar { padding: 2px; border: 2px solid var(--border); }
+calendar button { height: 30px; }
+listviewrow:selected { color: var(--surface); }
+listbox { --selection: #7e2553; }
+
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+button.primary:hover { background: var(--text); }
+button.primary:active { background: var(--selection); border-color: var(--surface); }
+button.primary:focus { border-color: var(--focus); }
 button.primary:disabled { background: var(--track); border-color: var(--border); color: var(--muted); }

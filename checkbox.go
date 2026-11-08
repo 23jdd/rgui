@@ -80,13 +80,14 @@ func (n *choice) Primitives(ctx PaintContext) []Node {
 	if n.radio {
 		radius = 9
 	}
+	radius = ctx.Style.Length("--mark-radius", radius)
 	nodes := []Node{
 		&RectNode{Rect: mark, Radius: radius, Style: draw.Style{Fill: ctx.color("--field", rl.DarkGray), Stroke: draw.Stroke{Color: border, Width: 1}}},
 		&TextNode{Position: rl.Vector2{X: bounds.X + 31, Y: bounds.Y + (bounds.Height-text.Size)/2}, Text: n.label, Style: text},
 	}
 	if n.checked() {
 		if n.radio {
-			nodes = append(nodes, &RectNode{Rect: inset(mark, UniformInsets(4)), Radius: 5, Style: draw.Style{Fill: ctx.color("--accent", rl.SkyBlue)}})
+			nodes = append(nodes, &RectNode{Rect: inset(mark, UniformInsets(4)), Radius: max(0, radius-4), Style: draw.Style{Fill: ctx.color("--accent", rl.SkyBlue)}})
 		} else {
 			nodes = append(nodes, DrawNode(func(PaintContext) {
 				draw.Polyline([]rl.Vector2{{X: mark.X + 4, Y: mark.Y + 9}, {X: mark.X + 8, Y: mark.Y + 13}, {X: mark.X + 14, Y: mark.Y + 5}},

@@ -131,9 +131,10 @@ func (s *slider) Primitives(ctx PaintContext) []Node {
 	if s.focused {
 		color = ctx.color("--focus", rl.Gold)
 	}
+	radius := ctx.Style.Length("--track-radius", 2)
 	return []Node{
-		&RectNode{Rect: track, Radius: 2, Style: draw.Style{Fill: ctx.color("--track", rl.DarkGray)}},
-		&RectNode{Rect: fill, Radius: 2, Style: draw.Style{Fill: ctx.color("--accent", rl.SkyBlue)}},
-		&RectNode{Rect: thumb, Radius: sliderThumb / 2, Style: draw.Style{Fill: color}},
+		&RectNode{Rect: track, Radius: radius, Style: draw.Style{Fill: ctx.color("--track", rl.DarkGray)}},
+		&RectNode{Rect: fill, Radius: radius, Style: draw.Style{Fill: ctx.color("--accent", rl.SkyBlue)}},
+		&RectNode{Rect: thumb, Radius: ctx.Style.Length("--thumb-radius", sliderThumb/2), Style: draw.Style{Fill: color}},
 	}
 }

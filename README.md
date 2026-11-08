@@ -266,7 +266,7 @@ func run() error {
 
 样式表支持 CSS 子集。浏览器布局、百分比长度、`@` 规则和 `!important` 当前未接入。未识别的属性可保留在规则中，绘制时由控件决定是否读取。
 
-运行 `go run ./examples/controls` 查看浅色主题和两列控件布局。主题位于 `examples/controls/theme.css`。
+运行 `go run ./examples/controls` 查看像素风主题和两列控件布局。主题位于 `examples/controls/theme.css`，使用 raylib 的内置位图字体和 PICO-8 的部分色板。`--mark-radius`、`--track-radius` 和 `--thumb-radius` 分别控制选择标记、轨道和滑块的圆角，像素主题将它们设为零。[PICO-8 手册](https://www.lexaloffle.com/dl/docs/pico-8_manual.html)
 
 ## 每次改动的工作流
 

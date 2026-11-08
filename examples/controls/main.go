@@ -4,8 +4,6 @@ import (
 	_ "embed"
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
 	"time"
 
 	"rgui"
@@ -22,23 +20,30 @@ func styled(node rgui.Node, classes ...string) rgui.Node {
 }
 
 func view() rgui.Node {
-	status := rgui.NewSignal("Ready")
+	status := rgui.NewSignal("READY")
+	menu := rgui.Menu(rgui.MenuGroup{Label: "FILE", Items: []rgui.MenuItem{
+		{Label: "RESET STATUS", Action: func() { status.Set("READY") }},
+	}})
+	heading := rgui.WithLayout(rgui.StackPanel(rgui.Vertical, 4,
+		styled(rgui.TextBlock(func() string { return "CONTROL GALLERY" }, rgui.Start), "title"),
+		styled(rgui.TextBlock(func() string { return "RGUI / SYSTEM MENU" }, rgui.Start), "eyebrow"),
+	), rgui.Box{VerticalAlignment: rgui.Center})
+	masthead := styled(rgui.Grid([]rgui.Track{rgui.Auto()}, []rgui.Track{rgui.Fixed(80), rgui.Star(1), rgui.Auto()},
+		rgui.Cell{Child: &consoleMark{}},
+		rgui.Cell{Column: 1, Child: heading},
+		rgui.Cell{Column: 2, Child: rgui.WithLayout(menu, rgui.Box{VerticalAlignment: rgui.Center})},
+	), "masthead")
 	return styled(rgui.DockPanel(true,
-		rgui.Docked{Edge: rgui.DockTop, Child: styled(rgui.StackPanel(rgui.Vertical, 6,
-			styled(rgui.TextBlock(func() string { return "RGUI   /   COMPONENT LIBRARY" }, rgui.Start), "eyebrow"),
-			styled(rgui.TextBlock(func() string { return "Control gallery" }, rgui.Start), "title"),
-		), "masthead")},
-		rgui.Docked{Edge: rgui.DockTop, Child: rgui.Menu(
-			rgui.MenuGroup{Label: "File", Items: []rgui.MenuItem{
-				{Label: "Reset status", Action: func() { status.Set("Ready") }},
-			}},
-		)},
-		rgui.Docked{Edge: rgui.DockBottom, Child: rgui.StatusBar(rgui.Text(status.Get))},
+		rgui.Docked{Edge: rgui.DockTop, Child: masthead},
+		rgui.Docked{Edge: rgui.DockBottom, Child: styled(rgui.DockPanel(true,
+			rgui.Docked{Edge: rgui.DockRight, Child: styled(rgui.Text(func() string { return "TAB FOCUS / WHEEL SCROLL" }), "key-hints")},
+			rgui.Docked{Child: rgui.StatusBar(styled(rgui.TextBlock(status.Get, rgui.Start), "ready"))},
+		), "footer")},
 		rgui.Docked{Child: rgui.TabControl([]rgui.TabItem{
-			{Header: "Inputs", Content: inputs()},
-			{Header: "Data", Content: data()},
-			{Header: "Documents", Content: documents()},
-			{Header: "Ink", Content: ink()},
+			{Header: "INPUTS", Content: inputs()},
+			{Header: "DATA", Content: data()},
+			{Header: "DOCUMENTS", Content: documents()},
+			{Header: "INK", Content: ink()},
 		}, nil)},
 	), "gallery")
 }
@@ -50,18 +55,18 @@ func inputs() rgui.Node {
 	value := rgui.NewSignal(35.0)
 	mode := rgui.NewSignal("one")
 	date := rgui.NewSignal(time.Time{})
-	fields := rgui.GroupBox("Profile", rgui.StackPanel(rgui.Vertical, 12,
-		rgui.StackPanel(rgui.Vertical, 5, rgui.Label("_Name", textBox), textBox),
-		rgui.StackPanel(rgui.Vertical, 5, rgui.Label("Password", nil), rgui.PasswordBox(password)),
+	fields := rgui.GroupBox("01 / PROFILE", rgui.StackPanel(rgui.Vertical, 10,
+		rgui.StackPanel(rgui.Vertical, 4, rgui.Label("_Name", textBox), textBox),
+		rgui.StackPanel(rgui.Vertical, 4, rgui.Label("Password", nil), rgui.PasswordBox(password)),
 		rgui.DatePicker(date),
 		styled(rgui.TextBlock(func() string { return "Name preview: " + name.Get() }, rgui.Start), "caption"),
-		styled(rgui.Button("Clear profile", func() {
+		styled(rgui.Button("CLEAR PROFILE", func() {
 			name.Set("")
 			password.Set("")
 			date.Set(time.Time{})
 		}), "primary"),
 	))
-	preferences := styled(rgui.GroupBox("Preferences", rgui.StackPanel(rgui.Vertical, 12,
+	preferences := styled(rgui.GroupBox("02 / PREFERENCES", rgui.StackPanel(rgui.Vertical, 10,
 		rgui.CheckBox("Enable option", nil),
 		rgui.StackPanel(rgui.Horizontal, 8, rgui.RadioButton("One", "one", mode), rgui.RadioButton("Two", "two", mode)),
 		rgui.ComboBox([]string{"First", "Second", "Third"}, nil),
@@ -125,13 +130,6 @@ func galleryConfig() (rgui.WindowConfig, error) {
 	if err != nil {
 		return rgui.WindowConfig{}, err
 	}
-	config := rgui.WindowConfig{Title: "rgui control gallery", Width: 900, Height: 640, MinWidth: 620, MinHeight: 440,
-		RetainedRendering: true, StyleSheet: sheet}
-	if windows := os.Getenv("WINDIR"); windows != "" {
-		font := filepath.Join(windows, "Fonts", "segoeui.ttf")
-		if _, err := os.Stat(font); err == nil {
-			config.FontPath = font
-		}
-	}
-	return config, nil
+	return rgui.WindowConfig{Title: "rgui control gallery", Width: 840, Height: 560, MinWidth: 680, MinHeight: 450,
+		RetainedRendering: true, StyleSheet: sheet}, nil
 }
