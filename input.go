@@ -153,14 +153,14 @@ func hitNode(c *component, point rl.Vector2) *component {
 	if options.HitTestInvisible {
 		return nil
 	}
-	if !options.Disabled && (!c.measuredBox.ClipToBounds || containsPoint(c.contentBounds(), point)) {
+	if !options.Disabled && (!c.measuredBox.ClipToBounds || containsPoint(c.visualRect(c.contentBounds()), point)) {
 		for i := len(c.children) - 1; i >= 0; i-- {
 			if hit := hitNode(c.children[i], point); hit != nil {
 				return hit
 			}
 		}
 	}
-	if containsPoint(c.bounds, point) {
+	if containsPoint(c.visualRect(c.bounds), point) {
 		return c
 	}
 	return nil
@@ -172,13 +172,13 @@ func containsPoint(bounds rl.Rectangle, point rl.Vector2) bool {
 }
 
 func visibleBounds(c *component) rl.Rectangle {
-	bounds := c.bounds
+	bounds := c.visualRect(c.bounds)
 	for node := c.parent; node != nil; node = node.parent {
 		if node.popup {
 			break
 		}
 		if node.measuredBox.ClipToBounds {
-			bounds = intersectRect(bounds, node.contentBounds())
+			bounds = intersectRect(bounds, node.visualRect(node.contentBounds()))
 		}
 	}
 	return bounds
@@ -206,7 +206,7 @@ func routeEvent(target *component, event *InputEvent) {
 				break
 			}
 			event.current, event.CurrentTarget = node, node.eventNode()
-			event.LocalPosition = rl.Vector2{X: event.Position.X - node.bounds.X, Y: event.Position.Y - node.bounds.Y}
+			event.LocalPosition = node.localPoint(event.Position)
 			dispatchInput(event.CurrentTarget, event)
 		}
 	}
@@ -217,7 +217,7 @@ func directPointerEvent(node *component, kind EventKind, point rl.Vector2) {
 	target := node.eventNode()
 	dispatchInput(target, &InputEvent{
 		Kind: kind, Phase: Direct, Source: target, CurrentTarget: target, Position: point,
-		LocalPosition: rl.Vector2{X: point.X - node.bounds.X, Y: point.Y - node.bounds.Y},
+		LocalPosition: node.localPoint(point),
 	})
 }
 

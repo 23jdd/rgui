@@ -25,7 +25,8 @@ type inkCanvas struct {
 
 func (n *inkCanvas) point(position rl.Vector2) rl.Vector2 {
 	bounds := n.Bounds()
-	return rl.Vector2{X: max(0, min(bounds.Width, position.X-bounds.X)), Y: max(0, min(bounds.Height, position.Y-bounds.Y))}
+	local := n.localPointer(position)
+	return rl.Vector2{X: max(0, min(bounds.Width, local.X)), Y: max(0, min(bounds.Height, local.Y))}
 }
 
 func (n *inkCanvas) PointerDown(e *InputEvent) {

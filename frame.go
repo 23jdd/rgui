@@ -48,12 +48,12 @@ func unionRect(a, b rl.Rectangle) rl.Rectangle {
 }
 
 func (c *component) takeVisualDamage() rl.Rectangle {
-	damage := c.visualDamage
+	damage := c.visualRect(c.visualDamage)
 	c.visualDamage = rl.Rectangle{}
 	if c.button {
 		disabled := !c.enabledButton()
 		if disabled != c.lastDisabled {
-			damage = unionRect(damage, c.bounds)
+			damage = unionRect(damage, c.visualRect(c.bounds))
 			c.lastDisabled = disabled
 		}
 	}
@@ -73,7 +73,7 @@ func (s paintState) damage(previous paintState) rl.Rectangle {
 		}
 		for _, node := range pair {
 			if node != nil {
-				damage = unionRect(damage, node.bounds)
+				damage = unionRect(damage, node.visualRect(node.bounds))
 			}
 		}
 	}

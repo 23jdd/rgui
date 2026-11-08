@@ -81,6 +81,7 @@ func (p popupLayout) arrange(children []*component, area rl.Rectangle) {
 	}
 	viewport := root.bounds
 	child := children[0]
+	area = p.owner.visualRect(area)
 	if p.anchor != nil {
 		point := p.anchor()
 		area.X, area.Y, area.Width = point.X, point.Y, 0

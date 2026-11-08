@@ -23,6 +23,7 @@ type thumb struct {
 	callbacks     DragCallbacks
 	desired       rl.Vector2
 	origin, delta rl.Vector2
+	inputScale    rl.Vector2
 	dragging      bool
 	keyboard      func(*InputEvent)
 }
@@ -35,6 +36,8 @@ func (t *thumb) PointerDown(e *InputEvent) {
 	}
 	t.dragging = true
 	t.origin, t.delta = e.Position, rl.Vector2{}
+	unit := t.host.visualRect(rl.Rectangle{Width: 1, Height: 1})
+	t.inputScale = rl.Vector2{X: max(0.000001, unit.Width), Y: max(0.000001, unit.Height)}
 	t.InvalidateVisual()
 	if t.callbacks.Started != nil {
 		t.callbacks.Started(e.Position)
@@ -45,7 +48,7 @@ func (t *thumb) PointerMove(e *InputEvent) {
 	if !t.dragging || e.Source != t {
 		return
 	}
-	delta := rl.Vector2{X: e.Position.X - t.origin.X, Y: e.Position.Y - t.origin.Y}
+	delta := rl.Vector2{X: (e.Position.X - t.origin.X) / t.inputScale.X, Y: (e.Position.Y - t.origin.Y) / t.inputScale.Y}
 	if delta != t.delta {
 		t.delta = delta
 		if t.callbacks.Moved != nil {

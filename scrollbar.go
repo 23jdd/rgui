@@ -74,8 +74,7 @@ func (b *scrollBar) Tapped(e *InputEvent) {
 	if e.Source != b {
 		return
 	}
-	bounds := b.Bounds()
-	position, _ := b.direction.axes(rl.Vector2{X: e.Position.X - bounds.X, Y: e.Position.Y - bounds.Y})
+	position, _ := b.direction.axes(b.localPointer(e.Position))
 	if position < b.handleStart {
 		b.set(b.value.Get() - b.page)
 	} else if position > b.handleStart+b.handleLength {

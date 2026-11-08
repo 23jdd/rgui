@@ -78,19 +78,19 @@ func (s *slider) movePointer(x float32) {
 func (s *slider) PointerDown(e *InputEvent) {
 	if e.Source == s && e.Button == PrimaryButton {
 		s.dragging = e.CapturePointer()
-		s.movePointer(e.Position.X)
+		s.movePointer(s.Bounds().X + s.localPointer(e.Position).X)
 	}
 }
 
 func (s *slider) PointerMove(e *InputEvent) {
 	if s.dragging && e.Source == s {
-		s.movePointer(e.Position.X)
+		s.movePointer(s.Bounds().X + s.localPointer(e.Position).X)
 	}
 }
 
 func (s *slider) PointerUp(e *InputEvent) {
 	if s.dragging && e.Source == s && e.Button == PrimaryButton {
-		s.movePointer(e.Position.X)
+		s.movePointer(s.Bounds().X + s.localPointer(e.Position).X)
 		s.dragging = false
 	}
 }

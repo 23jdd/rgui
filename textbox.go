@@ -207,14 +207,14 @@ func (b *textBox) PointerDown(e *InputEvent) {
 	if e.Button != PrimaryButton {
 		return
 	}
-	b.positionCaret(e.Position.X - b.Bounds().X)
+	b.positionCaret(b.localPointer(e.Position).X)
 	b.anchor = b.caret
 	b.dragging = e.CapturePointer()
 }
 
 func (b *textBox) PointerMove(e *InputEvent) {
 	if b.dragging {
-		b.positionCaret(e.Position.X - b.Bounds().X)
+		b.positionCaret(b.localPointer(e.Position).X)
 	}
 }
 

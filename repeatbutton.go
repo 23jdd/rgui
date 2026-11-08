@@ -51,7 +51,7 @@ func (b *repeatButton) PointerDown(e *InputEvent) {
 }
 func (b *repeatButton) PointerMove(e *InputEvent) {
 	if b.pointer {
-		b.inside = containsPoint(b.Bounds(), e.Position)
+		b.inside = containsPoint(b.host.visualRect(b.Bounds()), e.Position)
 	}
 }
 func (b *repeatButton) PointerUp(e *InputEvent) {

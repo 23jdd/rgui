@@ -111,6 +111,7 @@ type component struct {
 	panel                    panelLayout
 	legacy                   bool
 	popup                    bool
+	transform                *visualTransform
 	custom                   Node
 	decoration               *BorderStyle
 	visualDamage             rl.Rectangle
@@ -209,23 +210,31 @@ func (c *component) paint(canvas *draw.Canvas, font rl.Font, hovered, pressed, f
 	if c.popup {
 		return
 	}
-	visible := damage == nil || nonempty(intersectRect(c.bounds, *damage))
+	visible := damage == nil || nonempty(intersectRect(c.visualRect(c.bounds), *damage))
 	if visible && (c.custom != nil || c.panel == nil || c.decoration != nil) {
 		c.drawSelf(canvas, font, hovered, pressed, focused)
 	}
 	if len(c.children) == 0 {
 		return
 	}
-	children := func() {
+	paintChildren := func() {
 		for _, child := range c.children {
 			child.paint(canvas, font, hovered, pressed, focused, damage)
 		}
 	}
-	if c.measuredBox.ClipToBounds {
-		if damage != nil && !nonempty(intersectRect(c.contentBounds(), *damage)) {
+	children := paintChildren
+	if transform := c.transform; transform != nil {
+		if transform.scale.X <= 0 || transform.scale.Y <= 0 {
 			return
 		}
-		canvas.Clip(c.contentBounds(), children)
+		children = func() { canvas.Transform(transform.offset, 0, transform.scale, paintChildren) }
+	}
+	if c.measuredBox.ClipToBounds {
+		clip := c.visualRect(c.contentBounds())
+		if damage != nil && !nonempty(intersectRect(clip, *damage)) {
+			return
+		}
+		canvas.Clip(clip, children)
 	} else {
 		children()
 	}
@@ -245,7 +254,7 @@ func (c *component) drawSelf(canvas *draw.Canvas, font rl.Font, hovered, pressed
 		hovered: c == hovered, pressed: c == pressed, focused: c == focused,
 	}
 	if c.custom != nil {
-		canvas.Clip(c.contentBounds(), func() { renderNode(c, ctx) })
+		canvas.Clip(c.visualRect(c.contentBounds()), func() { renderNode(c, ctx) })
 		return
 	}
 	renderNode(c, ctx)
@@ -310,7 +319,7 @@ func (c *component) Primitives(ctx PaintContext) []Node {
 			if canvas == nil {
 				canvas = &draw.Canvas{}
 			}
-			canvas.Clip(content, func() { draw.Rect(underline, 0, draw.Style{Fill: style.Color}) })
+			canvas.Clip(c.visualRect(content), func() { draw.Rect(underline, 0, draw.Style{Fill: style.Color}) })
 		}))
 	}
 	if size.X <= content.Width && size.Y <= content.Height {
@@ -321,7 +330,7 @@ func (c *component) Primitives(ctx PaintContext) []Node {
 		if canvas == nil {
 			canvas = &draw.Canvas{}
 		}
-		canvas.Clip(content, func() { text.Draw(ctx) })
+		canvas.Clip(c.visualRect(content), func() { text.Draw(ctx) })
 	}))
 }
 

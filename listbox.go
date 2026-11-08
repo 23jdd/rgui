@@ -66,7 +66,7 @@ func (n *listBox) Tapped(e *InputEvent) {
 	if e.Source != n {
 		return
 	}
-	index := int(math.Floor(float64((e.Position.Y - n.Bounds().Y) / listRowHeight)))
+	index := int(math.Floor(float64(n.localPointer(e.Position).Y / listRowHeight)))
 	if index >= 0 && index < len(n.items) {
 		n.selectIndex(index)
 		e.Handled = true
@@ -111,8 +111,10 @@ func (n *listBox) Primitives(ctx PaintContext) []Node {
 	if n.host != nil {
 		visible = visibleBounds(n.host)
 	}
-	first := max(0, int(math.Floor(float64((visible.Y-bounds.Y)/listRowHeight))))
-	end := min(len(n.items), int(math.Ceil(float64((visible.Y+visible.Height-bounds.Y)/listRowHeight))))
+	firstY := n.localPointer(rl.Vector2{Y: visible.Y}).Y
+	lastY := n.localPointer(rl.Vector2{Y: visible.Y + visible.Height}).Y
+	first := max(0, int(math.Floor(float64(firstY/listRowHeight))))
+	end := min(len(n.items), int(math.Ceil(float64(lastY/listRowHeight))))
 	var nodes []Node
 	for i := first; i < end; i++ {
 		y := bounds.Y + float32(i)*listRowHeight

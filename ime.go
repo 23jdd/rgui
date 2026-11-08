@@ -64,7 +64,11 @@ func (s *imeSession) sync(target *component, active bool, viewport windowViewpor
 		return
 	}
 	s.setTarget(target)
-	s.platform.position(imeCaretPixels(client.IMECaret(), target.contentBounds(), viewport.scale))
+	caret := client.IMECaret()
+	content := target.contentBounds()
+	caret.X += content.X
+	caret.Y += content.Y
+	s.platform.position(imeCaretPixels(target.visualRect(caret), rl.Rectangle{}, viewport.scale))
 }
 
 func (s *imeSession) drain() bool {
