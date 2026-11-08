@@ -28,7 +28,22 @@ func view() rgui.Node {
 		rgui.Cell{Column: 1, Child: rgui.Button("2*", func() { count.Set(2) }).
 			WithLayout(rgui.Box{Margin: rgui.Insets{Left: 4}})},
 	)
-	return rgui.StackPanel(rgui.Vertical, 12, toolbar, ratio)
+	header := rgui.StackPanel(rgui.Vertical, 12, toolbar, ratio).
+		WithLayout(rgui.Box{Margin: rgui.Insets{Bottom: 16}})
+	sidebar := rgui.StackPanel(rgui.Vertical, 8,
+		rgui.Text(func() string { return "Dock" }),
+		rgui.Button("Reset", func() { count.Set(0) }),
+	).WithLayout(rgui.Box{Width: 86, Margin: rgui.Insets{Right: 12}})
+	var tags []rgui.Node
+	for i := 1; i <= 6; i++ {
+		tags = append(tags, rgui.Button(fmt.Sprintf("Item %d", i), func() { count.Set(i) }).
+			WithLayout(rgui.Box{Width: 104, Height: 36}))
+	}
+	return rgui.DockPanel(true,
+		rgui.Docked{Edge: rgui.DockTop, Child: header},
+		rgui.Docked{Edge: rgui.DockLeft, Child: sidebar},
+		rgui.Docked{Child: rgui.WrapPanel(rgui.Horizontal, 8, tags...)},
+	)
 }
 
 func main() {

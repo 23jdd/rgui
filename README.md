@@ -88,7 +88,7 @@ go run ./examples/primitives
 - 线性渐变用于矩形，径向渐变用于圆形，软阴影用于圆角矩形。虚线沿描边路径连续计算。
 - `Image` 和 `NinePatch` 接收调用方持有的 raylib 纹理，调用方负责加载和释放。
 
-## 下一里程碑：布局系统
+## 布局系统
 
 参考 WPF 的两阶段模型。父容器用 `Measure(available)` 询问子节点在给定空间下的期望尺寸，再用 `Arrange(slot)` 分配最终位置和大小。绘制与鼠标命中使用同一份最终布局结果。[WPF 布局文档](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/layout)
 
@@ -106,7 +106,9 @@ go run ./examples/primitives
 
 第二批用 `Grid(rows, columns, cells...)` 指定行列轨道和子节点，`Cell.Row` 和 `Cell.Column` 从零开始。轨道用 `Fixed(pixels)`、`Auto()` 或 `Star(weight)` 定义。沿未限制尺寸的轴，正权重的 `Star` 轨道按内容测量。
 
-布局算法用无需打开窗口的测试验证。运行 `go run ./examples/layout` 查看可缩放工具栏和 1:2 权重分配。
+第三批提供 `DockPanel(lastChildFill, children...)` 和 `WrapPanel(direction, gap, children...)`。Dock 子节点按声明顺序占用指定边缘，启用 `lastChildFill` 后最后一个子节点占用剩余矩形。Wrap 子节点沿主轴排列，空间不足时换到下一行或列。
+
+布局算法用无需打开窗口的测试验证。运行 `go run ./examples/layout` 查看可缩放工具栏、1:2 权重分配、贴边栏和自动换行。改变窗口宽度后点击重新排布的 `Item` 按钮，工具栏计数会更新为该项的编号。
 
 ## 每次改动的工作流
 
