@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"image/color"
 	"log"
 
 	"rgui"
@@ -48,7 +49,12 @@ func view() rgui.Node {
 }
 
 func main() {
-	if err := rgui.Run(rgui.WindowConfig{Title: "rgui layout"}, view); err != nil {
+	config := rgui.WindowConfig{
+		Title: "rgui layout", Width: 560, Height: 340,
+		MinWidth: 260, MinHeight: 200, MaxWidth: 1000,
+		Background: &color.RGBA{R: 25, G: 31, B: 45, A: 255},
+	}
+	if err := rgui.Run(config, view); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -12,6 +12,20 @@ go run ./examples/counter
 
 点击「加一」更新计数，按 Esc 关闭窗口。`task.toml` 提供相同的运行命令，构建任务生成 `demo.exe`。
 
+## 窗口配置
+
+`rgui.Run` 接收 `WindowConfig`。窗口默认以 480 × 300 逻辑像素打开，最小 240 × 160，支持缩放和高 DPI，帧率上限为 60 FPS。
+
+| 字段 | 用法 |
+| --- | --- |
+| `Width`、`Height` | 初始尺寸，自动限制在设置的最小和最大尺寸内。 |
+| `MinWidth`、`MinHeight`、`MaxWidth`、`MaxHeight` | 分轴设置缩放范围。最小值为零时采用默认值，最大值为零时该轴无上限。 |
+| `FixedSize`、`Borderless`、`AlwaysOnTop` | 分别控制禁止手动缩放、隐藏原生边框和标题栏、窗口置顶。 |
+| `VSync`、`TargetFPS` | 启用垂直同步并设置帧率上限。上限为零时使用默认 60 FPS，设为 -1 时取消帧率上限。 |
+| `Background` | 可选的 `*color.RGBA`，用于清除每帧背景。 |
+
+运行 `go run ./examples/layout` 可查看 560 × 340 的初始窗口、缩放范围和自定义背景。无边框窗口仍可用 Esc 关闭。
+
 ## 界面模型
 
 采用保留模式（retained mode）的组件树，状态更新采用类似 SolidJS 的细粒度响应式模型。每次挂载视图时执行一次 `View`，创建组件树和该视图的局部状态。库在帧之间保留节点及其交互状态，绘制和鼠标事件都使用同一棵树。

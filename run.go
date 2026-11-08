@@ -10,27 +10,29 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-// WindowConfig describes the window and optional font used by Run.
-type WindowConfig struct {
-	Title       string
-	FontPath    string
-	ExtraGlyphs string // Characters to load in addition to printable ASCII.
-}
-
 // Run opens a window, mounts view once, and runs the UI until the window closes.
 // Call Run on the main goroutine. View and click callbacks run on the UI thread.
 func Run(config WindowConfig, view func() Node) error {
+	settings, err := config.settings()
+	if err != nil {
+		return err
+	}
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
-	rl.SetConfigFlags(rl.FlagWindowHighdpi | rl.FlagWindowResizable)
-	rl.InitWindow(480, 300, config.Title)
+	rl.SetConfigFlags(settings.flags)
+	rl.InitWindow(settings.width, settings.height, config.Title)
 	if !rl.IsWindowReady() {
 		return fmt.Errorf("open raylib window")
 	}
 	defer rl.CloseWindow()
-	rl.SetWindowMinSize(240, 160)
-	rl.SetTargetFPS(60)
+	// Raylib retains its window flags across CloseWindow.
+	defer rl.ClearWindowState(settings.flags &^ rl.FlagWindowHighdpi)
+	// Clear old limits before applying a new minimum.
+	rl.SetWindowMaxSize(0, 0)
+	rl.SetWindowMinSize(int(settings.minWidth), int(settings.minHeight))
+	rl.SetWindowMaxSize(int(settings.maxWidth), int(settings.maxHeight))
+	rl.SetTargetFPS(settings.fps)
 
 	font := rl.GetFontDefault()
 	if config.FontPath != "" {
@@ -108,7 +110,7 @@ func Run(config WindowConfig, view func() Node) error {
 		}
 
 		rl.BeginDrawing()
-		rl.ClearBackground(rl.NewColor(23, 28, 38, 255))
+		rl.ClearBackground(settings.background)
 		root.draw(font, hovered, pressed, focused)
 		rl.EndDrawing()
 	}
