@@ -1,6 +1,10 @@
 package rgui
 
-import rl "github.com/gen2brain/raylib-go/raylib"
+import (
+	"rgui/draw"
+
+	rl "github.com/gen2brain/raylib-go/raylib"
+)
 
 // Node is a component in a view. Create a new node for each position in the tree.
 type Node struct {
@@ -108,12 +112,13 @@ func (c *component) draw(font rl.Font, hovered, pressed *component) {
 				fill = rl.DarkGray
 			}
 		}
-		rl.DrawRectangleRec(c.bounds, fill)
+		draw.Rect(c.bounds, 0, draw.Style{Fill: fill})
 	}
-	size := rl.MeasureTextEx(font, c.text, fontSize, letterSpacing)
+	style := draw.TextStyle{Font: font, Size: fontSize, Spacing: letterSpacing, Color: rl.RayWhite}
+	size := draw.MeasureText(c.text, style)
 	position := rl.Vector2{
 		X: c.bounds.X + (c.bounds.Width-size.X)/2,
 		Y: c.bounds.Y + (c.bounds.Height-size.Y)/2,
 	}
-	rl.DrawTextEx(font, c.text, position, fontSize, letterSpacing, rl.RayWhite)
+	draw.Text(position, c.text, style)
 }

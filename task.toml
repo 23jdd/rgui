@@ -5,3 +5,5 @@ default="run"
 cmds=["go run ./examples/counter"]
 [build]
 cmds=["go build -o demo.exe ./examples/counter"]
+[primitives]
+cmds=["go run ./examples/primitives"]
