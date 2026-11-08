@@ -37,6 +37,7 @@ func view() rgui.Node {
 	var tags []rgui.Node
 	for i := 1; i <= 6; i++ {
 		tags = append(tags, rgui.Button(fmt.Sprintf("Item %d", i), func() { count.Set(i) }).
+			WithDisabled(i == 6).
 			WithLayout(rgui.Box{Width: 104, Height: 36}))
 	}
 	return rgui.DockPanel(true,

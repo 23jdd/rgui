@@ -15,6 +15,8 @@ type component struct {
 	children  []*component
 	readText  func() string
 	onClick   func()
+	button    bool
+	disabled  bool
 	text      string
 	boundText *binding
 	bounds    rl.Rectangle
@@ -36,9 +38,19 @@ func Text(read func() string) Node {
 	return Node{&component{readText: read}}
 }
 
-// Button calls onClick when the left mouse button is pressed and released inside it.
+// Button calls onClick on a completed mouse click or keyboard activation.
 func Button(label string, onClick func()) Node {
-	return Node{&component{text: label, onClick: onClick}}
+	return Node{&component{text: label, button: true, onClick: onClick}}
+}
+
+// WithDisabled sets whether this button accepts input. Use it on the UI thread.
+func (n Node) WithDisabled(disabled bool) Node {
+	n.component.disabled = disabled
+	return n
+}
+
+func (c *component) enabledButton() bool {
+	return c != nil && c.button && !c.disabled && c.onClick != nil
 }
 
 func (c *component) mount(pending subscriptions) {
@@ -73,7 +85,7 @@ const (
 )
 
 func (c *component) buttonAt(point rl.Vector2) *component {
-	if c.onClick != nil && c.bounds.Width > 0 && c.bounds.Height > 0 && rl.CheckCollisionPointRec(point, c.bounds) {
+	if c.enabledButton() && c.bounds.Width > 0 && c.bounds.Height > 0 && rl.CheckCollisionPointRec(point, c.bounds) {
 		return c
 	}
 	for i := len(c.children) - 1; i >= 0; i-- {
@@ -85,27 +97,35 @@ func (c *component) buttonAt(point rl.Vector2) *component {
 	return nil
 }
 
-func (c *component) draw(font rl.Font, hovered, pressed *component) {
+func (c *component) draw(font rl.Font, hovered, pressed, focused *component) {
 	if c.children != nil {
 		for _, child := range c.children {
-			child.draw(font, hovered, pressed)
+			child.draw(font, hovered, pressed, focused)
 		}
 		return
 	}
 	if c.bounds.Width <= 0 || c.bounds.Height <= 0 {
 		return
 	}
-	if c.onClick != nil {
+	style := textStyle(font)
+	if c.button {
 		fill := rl.DarkBlue
-		if c == hovered {
+		switch {
+		case !c.enabledButton():
+			fill = rl.NewColor(57, 64, 76, 255)
+			style.Color = rl.LightGray
+		case c == pressed:
+			fill = rl.DarkGray
+		case c == hovered:
 			fill = rl.Blue
-			if c == pressed {
-				fill = rl.DarkGray
-			}
 		}
 		draw.Rect(c.bounds, 0, draw.Style{Fill: fill})
+		if c == focused {
+			draw.Rect(inset(c.bounds, UniformInsets(2)), 0, draw.Style{
+				Stroke: draw.Stroke{Color: rl.Gold, Width: 2},
+			})
+		}
 	}
-	style := textStyle(font)
 	content := inset(c.bounds, c.box.Padding)
 	size := draw.MeasureText(c.text, style)
 	position := rl.Vector2{

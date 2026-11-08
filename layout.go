@@ -143,7 +143,7 @@ func (c *component) measure(available rl.Vector2, text measureText) rl.Vector2 {
 		desired = c.panel.measure(c.children, rl.Vector2{X: content.Width, Y: content.Height}, measure)
 	} else {
 		desired = text(c.text)
-		if c.onClick != nil {
+		if c.button {
 			desired.X += 24
 			desired.Y = max(desired.Y, rowHeight)
 		}

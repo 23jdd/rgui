@@ -59,6 +59,7 @@ func Run(config WindowConfig, view func() Node) error {
 	root.mount(pending)
 
 	var click clickState
+	var focus focusState
 	var previousViewport rl.Vector2
 	style := textStyle(font)
 	measure := func(value string) rl.Vector2 { return draw.MeasureText(value, style) }
@@ -69,17 +70,46 @@ func Run(config WindowConfig, view func() Node) error {
 			previousViewport = viewport
 		}
 		mouse := rl.GetMousePosition()
-		hovered := windowButtonAt(root, mouse, viewport)
-		click.update(hovered, rl.IsMouseButtonPressed(rl.MouseButtonLeft), rl.IsMouseButtonReleased(rl.MouseButtonLeft))
+		active := rl.IsWindowFocused()
+		var hovered *component
+		if active {
+			if !focus.button.focusable(viewport) {
+				focus.set(nil)
+			}
+			hovered = windowButtonAt(root, mouse, viewport)
+			mouseDown := rl.IsMouseButtonPressed(rl.MouseButtonLeft)
+			if mouseDown {
+				focus.cancelPress()
+				focus.set(hovered)
+			}
+			click.update(hovered, mouseDown, rl.IsMouseButtonReleased(rl.MouseButtonLeft))
+			focus.readKeyboard(root, viewport)
+		} else {
+			click.pressed = nil
+			focus.cancelPress()
+		}
 		if len(pending) > 0 {
 			flushBindings(pending)
 			layoutRoot(root, viewport, measure)
-			hovered = windowButtonAt(root, mouse, viewport)
+			if active {
+				hovered = windowButtonAt(root, mouse, viewport)
+			}
+		}
+		pressed := click.pressed
+		if pressed != hovered {
+			pressed = nil
+		}
+		var focused *component
+		if active && focus.button.focusable(viewport) {
+			focused = focus.button
+			if focus.key != 0 {
+				pressed = focused
+			}
 		}
 
 		rl.BeginDrawing()
 		rl.ClearBackground(rl.NewColor(23, 28, 38, 255))
-		root.draw(font, hovered, click.pressed)
+		root.draw(font, hovered, pressed, focused)
 		rl.EndDrawing()
 	}
 	return nil
@@ -103,7 +133,7 @@ func (c *clickState) update(hovered *component, down, up bool) {
 	if up {
 		pressed := c.pressed
 		c.pressed = nil
-		if pressed != nil && pressed == hovered {
+		if pressed == hovered && pressed.enabledButton() {
 			pressed.onClick()
 		}
 	}
