@@ -19,13 +19,13 @@ func (p *progressBar) Measure(ctx rgui.MeasureContext) rl.Vector2 {
 	return rl.Vector2{X: min(240, ctx.Available.X), Y: 20}
 }
 
-func (p *progressBar) Primitives(_ rgui.PaintContext) []draw.Primitive {
+func (p *progressBar) Primitives(_ rgui.PaintContext) []rgui.Node {
 	bounds := p.Bounds()
 	fill := bounds
 	fill.Width *= min(1, max(0, p.value.Get()))
-	return []draw.Primitive{
-		draw.RectPrimitive{Bounds: bounds, Radius: 6, Style: draw.Style{Fill: rl.DarkGray}},
-		draw.RectPrimitive{Bounds: fill, Radius: 6, Style: draw.Style{Fill: rl.SkyBlue}},
+	return []rgui.Node{
+		&rgui.RectNode{Rect: bounds, Radius: 6, Style: draw.Style{Fill: rl.DarkGray}},
+		&rgui.RectNode{Rect: fill, Radius: 6, Style: draw.Style{Fill: rl.SkyBlue}},
 	}
 }
 

@@ -15,7 +15,7 @@ type Node interface {
 	// Place receives the final rectangle. A custom node receives its content area.
 	Place(rl.Rectangle)
 	// Primitives returns a paint list in back-to-front order, without changing application state.
-	Primitives(PaintContext) []draw.Primitive
+	Primitives(PaintContext) []Node
 }
 
 // BaseNode provides default behavior for embedding in a custom node.
@@ -24,6 +24,7 @@ type BaseNode struct {
 	Box
 	Input   InputOptions
 	bounds  rl.Rectangle
+	placed  bool
 	slot    rl.Rectangle
 	desired rl.Vector2
 	host    *component
@@ -36,7 +37,7 @@ func (*BaseNode) Measure(MeasureContext) rl.Vector2 { return rl.Vector2{} }
 
 // Place stores the rectangle assigned by layout. Call it when overriding Place
 // if you want Bounds to reflect the assigned rectangle.
-func (n *BaseNode) Place(bounds rl.Rectangle) { n.bounds = bounds }
+func (n *BaseNode) Place(bounds rl.Rectangle) { n.bounds, n.placed = bounds, true }
 
 // Bounds returns the most recent rectangle passed to Place.
 func (n *BaseNode) Bounds() rl.Rectangle { return n.bounds }
@@ -50,7 +51,7 @@ func (n *BaseNode) DesiredSize() rl.Vector2 { return n.desired }
 func (n *BaseNode) layoutBase() *BaseNode { return n }
 
 // Primitives returns an empty paint list.
-func (*BaseNode) Primitives(PaintContext) []draw.Primitive { return nil }
+func (*BaseNode) Primitives(PaintContext) []Node { return nil }
 
 // MeasureContext supplies the available space and the window's text metrics.
 // An unconstrained dimension is positive infinity. Desired sizes must be finite.
@@ -230,23 +231,22 @@ func (c *component) drawSelf(canvas *draw.Canvas, font rl.Font, hovered, pressed
 		canvas:  canvas,
 		hovered: c == hovered, pressed: c == pressed, focused: c == focused,
 	}
-	primitives := c.Primitives(ctx)
 	if c.custom != nil {
-		canvas.Clip(c.contentBounds(), func() { draw.Render(primitives) })
+		canvas.Clip(c.contentBounds(), func() { renderNode(c, ctx) })
 		return
 	}
-	draw.Render(primitives)
+	renderNode(c, ctx)
 }
 
-func (c *component) Primitives(ctx PaintContext) []draw.Primitive {
+func (c *component) Primitives(ctx PaintContext) []Node {
 	if c.custom != nil {
 		return c.custom.Primitives(ctx)
 	}
 	if c.decoration != nil {
 		style := c.decoration
-		return []draw.Primitive{
-			draw.RectPrimitive{Bounds: c.bounds, Radius: style.Radius, Style: draw.Style{Fill: style.Background}},
-			draw.RectPrimitive{Bounds: inset(c.bounds, UniformInsets(style.Thickness/2)), Radius: max(0, style.Radius-style.Thickness/2),
+		return []Node{
+			&RectNode{Rect: c.bounds, Radius: style.Radius, Style: draw.Style{Fill: style.Background}},
+			&RectNode{Rect: inset(c.bounds, UniformInsets(style.Thickness/2)), Radius: max(0, style.Radius-style.Thickness/2),
 				Style: draw.Style{Stroke: draw.Stroke{Color: style.BorderColor, Width: style.Thickness}}},
 		}
 	}
@@ -254,7 +254,7 @@ func (c *component) Primitives(ctx PaintContext) []draw.Primitive {
 		return nil
 	}
 	style := textStyle(ctx.Font)
-	var primitives []draw.Primitive
+	var primitives []Node
 	if c.button {
 		fill := rl.DarkBlue
 		switch {
@@ -266,17 +266,17 @@ func (c *component) Primitives(ctx PaintContext) []draw.Primitive {
 		case ctx.hovered:
 			fill = rl.Blue
 		}
-		primitives = append(primitives, draw.RectPrimitive{Bounds: c.bounds, Style: draw.Style{Fill: fill}})
+		primitives = append(primitives, &RectNode{Rect: c.bounds, Style: draw.Style{Fill: fill}})
 		if ctx.focused {
-			primitives = append(primitives, draw.RectPrimitive{
-				Bounds: inset(c.bounds, UniformInsets(2)),
-				Style:  draw.Style{Stroke: draw.Stroke{Color: rl.Gold, Width: 2}},
+			primitives = append(primitives, &RectNode{
+				Rect:  inset(c.bounds, UniformInsets(2)),
+				Style: draw.Style{Stroke: draw.Stroke{Color: rl.Gold, Width: 2}},
 			})
 		}
 	}
 	content := c.contentBounds()
 	size := draw.MeasureText(c.text, style)
-	text := draw.TextPrimitive{
+	text := &TextNode{
 		Position: rl.Vector2{
 			X: content.X + (content.Width-size.X)/2,
 			Y: content.Y + (content.Height-size.Y)/2,
@@ -286,12 +286,12 @@ func (c *component) Primitives(ctx PaintContext) []draw.Primitive {
 	if size.X <= content.Width && size.Y <= content.Height {
 		return append(primitives, text)
 	}
-	return append(primitives, draw.PrimitiveFunc(func() {
+	return append(primitives, DrawNode(func(ctx PaintContext) {
 		canvas := ctx.canvas
 		if canvas == nil {
 			canvas = &draw.Canvas{}
 		}
-		canvas.Clip(content, text.Draw)
+		canvas.Clip(content, func() { text.Draw(ctx) })
 	}))
 }
 

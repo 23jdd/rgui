@@ -140,13 +140,13 @@ go run ./examples/primitives
 type Node interface {
     Measure(MeasureContext) rl.Vector2
     Place(rl.Rectangle)
-    Primitives(PaintContext) []draw.Primitive
+    Primitives(PaintContext) []Node
 }
 ```
 
 1. `Measure` 接收可用空间和默认字体的文字测量函数，返回内容的期望尺寸。可用宽高可能是正无穷。一次布局可能测量同一节点多次。
 2. `Place` 接收最终的内容矩形，对应 WPF 的 Arrange。节点可以保存矩形或在此计算内部几何。
-3. `Primitives` 每帧根据最近一次 `Place` 的结果生成图元。框架按切片顺序绘制，并将自定义节点的绘制裁剪到内容区域。
+3. `Primitives` 根据最近一次 `Place` 的结果返回绘制节点。框架按切片顺序递归绘制，并将自定义节点的绘制裁剪到内容区域。返回的绘制节点使用生成时的坐标。需要参与布局、挂载或接收输入的节点应作为容器子节点添加。
 
 可以在自定义结构体中嵌入 `rgui.BaseNode`，然后用该结构体的指针作为 `Node`。框架自动读取其 `Box`，包括 `Width` / `Height`、`MinWidth` / `MinHeight`、`MaxWidth` / `MaxHeight`、`HorizontalAlignment` / `VerticalAlignment`、`Margin` 和 `Padding`。在 UI 线程修改属性后，框架会重新布局。
 
@@ -156,7 +156,7 @@ type Node interface {
 
 - 内置控件、面板和自定义节点统一使用 `Node`。布局属性通过 `WithLayout(node, box)` 设置，由框架应用到父容器分配的区域，再将内容矩形传给自定义节点的 `Place`。[WPF 布局文档](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/layout)
 - 绘制时可以读取 Signal 的最新值。`Measure` 应依据传入的约束与稳定的尺寸配置计算，读取 Signal 不会单独让布局失效。自定义节点接口当前提供测量和绘制能力。
-- `draw.RectPrimitive` 和 `draw.TextPrimitive` 可直接返回，其他现有图元可通过 `draw.PrimitiveFunc` 加入列表。
+- `*rgui.RectNode` 和 `*rgui.TextNode` 可直接放入绘制列表或作为容器子节点。其他底层绘图函数可以通过 `rgui.DrawNode(func(PaintContext))` 包装为节点。
 
 运行 `go run ./examples/customnode` 查看自定义进度条。按下 `Advance` 后，文本和进度条读取同一个 Signal。
 
