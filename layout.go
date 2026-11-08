@@ -35,9 +35,12 @@ func UniformInsets(size float32) Insets {
 }
 
 // Box configures a node's layout. Nonpositive Width and Height mean Auto.
-// Margin is outside the node; Padding is inside it.
+// A nonpositive maximum is unbounded. Minimum sizes take precedence over
+// maximum and explicit sizes. Margin is outside the node; Padding is inside it.
 type Box struct {
 	Width, Height                          float32
+	MinWidth, MinHeight                    float32
+	MaxWidth, MaxHeight                    float32
 	Margin, Padding                        Insets
 	HorizontalAlignment, VerticalAlignment Alignment
 }
@@ -45,7 +48,7 @@ type Box struct {
 // WithLayout attaches layout options to a built-in or custom node.
 func WithLayout(node Node, box Box) Node {
 	c := componentOf(node)
-	c.box = box
+	c.layoutBase().Box = box
 	return c
 }
 
@@ -132,15 +135,13 @@ func (d Direction) slot(area rl.Rectangle, offset, length float32) rl.Rectangle 
 }
 
 func (c *component) measure(available rl.Vector2, text measureText) rl.Vector2 {
-	box := c.box
-	width := available.X - box.Margin.Left - box.Margin.Right
-	height := available.Y - box.Margin.Top - box.Margin.Bottom
-	if box.Width > 0 {
-		width = box.Width
-	}
-	if box.Height > 0 {
-		height = box.Height
-	}
+	base := c.layoutBase()
+	box := base.Box
+	c.measuredBox = box
+	x := layoutLimits(box.Width, box.MinWidth, box.MaxWidth)
+	y := layoutLimits(box.Height, box.MinHeight, box.MaxHeight)
+	width := x.clamp(available.X - box.Margin.Left - box.Margin.Right)
+	height := y.clamp(available.Y - box.Margin.Top - box.Margin.Bottom)
 	content := inset(rl.Rectangle{Width: width, Height: height}, box.Padding)
 	var desired rl.Vector2
 	if c.panel != nil {
@@ -166,47 +167,79 @@ func (c *component) measure(available rl.Vector2, text measureText) rl.Vector2 {
 	}
 	desired.X += box.Padding.Left + box.Padding.Right
 	desired.Y += box.Padding.Top + box.Padding.Bottom
-	if box.Width > 0 {
-		desired.X = box.Width
-	}
-	if box.Height > 0 {
-		desired.Y = box.Height
-	}
-	desired.X = max(0, desired.X+box.Margin.Left+box.Margin.Right)
-	desired.Y = max(0, desired.Y+box.Margin.Top+box.Margin.Bottom)
+	desired.X = max(0, x.clamp(desired.X)+box.Margin.Left+box.Margin.Right)
+	desired.Y = max(0, y.clamp(desired.Y)+box.Margin.Top+box.Margin.Bottom)
 	c.desired = desired
+	base.desired = desired
 	return desired
 }
 
 func (c *component) arrange(slot rl.Rectangle) {
-	box := c.box
+	box := c.measuredBox
+	c.slot = slot
 	area := inset(slot, box.Margin)
 	width := c.desired.X - box.Margin.Left - box.Margin.Right
 	height := c.desired.Y - box.Margin.Top - box.Margin.Bottom
-	area.X, area.Width = align(area.X, area.Width, width, box.Width, box.HorizontalAlignment)
-	area.Y, area.Height = align(area.Y, area.Height, height, box.Height, box.VerticalAlignment)
+	x := layoutLimits(box.Width, box.MinWidth, box.MaxWidth)
+	y := layoutLimits(box.Height, box.MinHeight, box.MaxHeight)
+	area.X, area.Width = align(area.X, area.Width, width, x, box.HorizontalAlignment)
+	area.Y, area.Height = align(area.Y, area.Height, height, y, box.VerticalAlignment)
 	c.BaseNode.Place(area)
 	if c.panel != nil {
 		c.panel.arrange(c.children, inset(area, box.Padding))
 	} else if c.custom != nil {
+		c.layoutBase().slot = slot
 		c.custom.Place(inset(area, box.Padding))
 	}
 }
 
-func align(start, available, desired, fixed float32, alignment Alignment) (float32, float32) {
-	size := max(0, min(available, desired))
-	if fixed > 0 {
-		size = fixed
-	} else if alignment == Stretch {
-		size = available
+type axisLimits struct {
+	min, max float32
+}
+
+func layoutLimits(explicit, minimum, maximum float32) axisLimits {
+	minimum = max(0, minimum)
+	if maximum <= 0 {
+		maximum = float32(math.Inf(1))
+	}
+	limits := axisLimits{min: minimum, max: max(minimum, maximum)}
+	if explicit > 0 {
+		size := limits.clamp(explicit)
+		return axisLimits{min: size, max: size}
+	}
+	return limits
+}
+
+func (limits axisLimits) clamp(size float32) float32 {
+	return max(limits.min, min(limits.max, size))
+}
+
+func align(start, available, desired float32, limits axisLimits, alignment Alignment) (float32, float32) {
+	size := limits.clamp(min(available, desired))
+	if alignment == Stretch {
+		size = limits.clamp(available)
 	}
 	switch alignment {
+	case Stretch:
+		start += max(0, (available-size)/2)
 	case Center:
 		start += (available - size) / 2
 	case End:
 		start += available - size
 	}
 	return start, size
+}
+
+func (c *component) layoutChanged() bool {
+	if c.measuredBox != c.layoutBase().Box {
+		return true
+	}
+	for _, child := range c.children {
+		if child.layoutChanged() {
+			return true
+		}
+	}
+	return false
 }
 
 func inset(area rl.Rectangle, sides Insets) rl.Rectangle {
@@ -228,7 +261,7 @@ func layoutRoot(root *component, viewport rl.Vector2, text measureText) {
 	root.Measure(MeasureContext{Available: rl.Vector2{X: area.Width, Y: area.Height}, MeasureText: text})
 	if root.panel == nil && root.custom == nil {
 		area.Height = root.desired.Y
-		if root.box.Height <= 0 {
+		if root.measuredBox.Height <= 0 {
 			area.Height = max(rowHeight, area.Height)
 		}
 	}

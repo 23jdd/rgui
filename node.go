@@ -20,7 +20,10 @@ type Node interface {
 // BaseNode provides default behavior for embedding in a custom node.
 // Its zero value has no preferred size and produces no primitives.
 type BaseNode struct {
-	bounds rl.Rectangle
+	Box
+	bounds  rl.Rectangle
+	slot    rl.Rectangle
+	desired rl.Vector2
 }
 
 var _ Node = (*BaseNode)(nil)
@@ -34,6 +37,14 @@ func (n *BaseNode) Place(bounds rl.Rectangle) { n.bounds = bounds }
 
 // Bounds returns the most recent rectangle passed to Place.
 func (n *BaseNode) Bounds() rl.Rectangle { return n.bounds }
+
+// LayoutSlot returns the rectangle allocated by the parent before applying Box.
+func (n *BaseNode) LayoutSlot() rl.Rectangle { return n.slot }
+
+// DesiredSize returns the last measured size including margin.
+func (n *BaseNode) DesiredSize() rl.Vector2 { return n.desired }
+
+func (n *BaseNode) layoutBase() *BaseNode { return n }
 
 // Primitives returns an empty paint list.
 func (*BaseNode) Primitives(PaintContext) []draw.Primitive { return nil }
@@ -65,18 +76,24 @@ func componentOf(node Node) *component {
 
 type component struct {
 	BaseNode
-	children  []*component
-	readText  func() string
-	onClick   func()
-	button    bool
-	disabled  bool
-	text      string
-	boundText *binding
-	desired   rl.Vector2
-	box       Box
-	panel     panelLayout
-	legacy    bool
-	custom    Node
+	children    []*component
+	readText    func() string
+	onClick     func()
+	button      bool
+	disabled    bool
+	text        string
+	boundText   *binding
+	measuredBox Box
+	panel       panelLayout
+	legacy      bool
+	custom      Node
+}
+
+func (c *component) layoutBase() *BaseNode {
+	if custom, ok := c.custom.(interface{ layoutBase() *BaseNode }); ok {
+		return custom.layoutBase()
+	}
+	return &c.BaseNode
 }
 
 // Stack lays out its children vertically in declaration order.
@@ -169,7 +186,7 @@ func (c *component) draw(font rl.Font, hovered, pressed, focused *component) {
 	primitives := c.Primitives(ctx)
 	if c.custom != nil {
 		var canvas draw.Canvas
-		canvas.Clip(inset(c.bounds, c.box.Padding), func() { draw.Render(primitives) })
+		canvas.Clip(inset(c.bounds, c.measuredBox.Padding), func() { draw.Render(primitives) })
 		return
 	}
 	draw.Render(primitives)
@@ -203,7 +220,7 @@ func (c *component) Primitives(ctx PaintContext) []draw.Primitive {
 			})
 		}
 	}
-	content := inset(c.bounds, c.box.Padding)
+	content := inset(c.bounds, c.measuredBox.Padding)
 	size := draw.MeasureText(c.text, style)
 	text := draw.TextPrimitive{
 		Position: rl.Vector2{

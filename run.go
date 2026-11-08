@@ -67,7 +67,7 @@ func Run(config WindowConfig, view func() Node) error {
 	measure := func(value string) rl.Vector2 { return draw.MeasureText(value, style) }
 	for !rl.WindowShouldClose() {
 		viewport := rl.Vector2{X: float32(rl.GetScreenWidth()), Y: float32(rl.GetScreenHeight())}
-		if viewport != previousViewport {
+		if viewport != previousViewport || root.layoutChanged() {
 			layoutRoot(root, viewport, measure)
 			previousViewport = viewport
 		}
@@ -90,8 +90,9 @@ func Run(config WindowConfig, view func() Node) error {
 			click.pressed = nil
 			focus.cancelPress()
 		}
-		if len(pending) > 0 {
-			flushBindings(pending)
+		bindingsChanged := len(pending) > 0
+		flushBindings(pending)
+		if bindingsChanged || root.layoutChanged() {
 			layoutRoot(root, viewport, measure)
 			if active {
 				hovered = windowButtonAt(root, mouse, viewport)

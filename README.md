@@ -148,7 +148,11 @@ type Node interface {
 2. `Place` 接收最终的内容矩形，对应 WPF 的 Arrange。节点可以保存矩形或在此计算内部几何。
 3. `Primitives` 每帧根据最近一次 `Place` 的结果生成图元。框架按切片顺序绘制，并将自定义节点的绘制裁剪到内容区域。
 
-可以在自定义结构体中嵌入 `rgui.BaseNode`，然后用该结构体的指针作为 `Node`。默认 `Place` 保存矩形，绘制时可用 `Bounds()` 读取。默认 `Measure` 返回零尺寸，`Primitives` 返回空列表。进度条只覆盖测量和绘制。
+可以在自定义结构体中嵌入 `rgui.BaseNode`，然后用该结构体的指针作为 `Node`。框架自动读取其 `Box`，包括 `Width` / `Height`、`MinWidth` / `MinHeight`、`MaxWidth` / `MaxHeight`、`HorizontalAlignment` / `VerticalAlignment`、`Margin` 和 `Padding`。在 UI 线程修改属性后，框架会重新布局。
+
+默认宽高按内容测量，最大尺寸为零时表示无上限。尺寸冲突时最小值优先，显式宽高受有效的最小值和最大值限制。`Stretch` 尽量填满可用空间，受最大尺寸限制时在剩余空间内居中。[WPF 尺寸约束](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/controls/how-to-set-the-width-properties-of-an-element)
+
+`DesiredSize()` 返回含外边距的期望尺寸，`LayoutSlot()` 返回父容器分配的原始矩形。默认 `Place` 保存最终内容矩形，绘制时通过 `Bounds()` 读取。默认内容测量返回零尺寸，绘制返回空列表。进度条示例直接设置嵌入的 `Box`，只覆盖测量和绘制。
 
 - 内置控件、面板和自定义节点统一使用 `Node`。布局属性通过 `WithLayout(node, box)` 设置，由框架应用到父容器分配的区域，再将内容矩形传给自定义节点的 `Place`。[WPF 布局文档](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/layout)
 - 绘制时可以读取 Signal 的最新值。`Measure` 应依据传入的约束与稳定的尺寸配置计算，读取 Signal 不会单独让布局失效。自定义节点接口当前提供测量和绘制能力。

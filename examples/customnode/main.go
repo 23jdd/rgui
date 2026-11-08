@@ -31,9 +31,17 @@ func (p *progressBar) Primitives(_ rgui.PaintContext) []draw.Primitive {
 
 func view() rgui.Node {
 	value := rgui.NewSignal(float32(0.35))
+	bar := &progressBar{
+		BaseNode: rgui.BaseNode{Box: rgui.Box{
+			MinWidth: 100, MaxWidth: 240, MinHeight: 20,
+			Margin: rgui.Insets{Top: 4}, Padding: rgui.UniformInsets(2),
+			HorizontalAlignment: rgui.Center,
+		}},
+		value: value,
+	}
 	return rgui.StackPanel(rgui.Vertical, 12,
 		rgui.Text(func() string { return fmt.Sprintf("Progress: %.0f%%", value.Get()*100) }),
-		rgui.WithLayout(&progressBar{value: value}, rgui.Box{HorizontalAlignment: rgui.Center}),
+		bar,
 		rgui.Button("Advance", func() { value.Set(min(1, value.Get()+0.1)) }),
 	)
 }
