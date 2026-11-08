@@ -9,17 +9,33 @@ import (
 type focusState struct {
 	button *component
 	key    int32
+	keys   []int32
 }
 
 func (f *focusState) set(button *component) {
 	if f.button != button {
+		previous := f.button
 		f.button = button
 		f.key = 0
+		routeEvent(previous, &InputEvent{Kind: FocusLost})
+		if f.button == button && button.inputEnabled() {
+			routeEvent(button, &InputEvent{Kind: FocusGained})
+		}
 	}
 }
 
 func (f *focusState) move(root *component, viewport rl.Vector2, backward bool) {
 	buttons := tabOrder(root, viewport, nil)
+	slices.SortStableFunc(buttons, func(a, b *component) int {
+		ai, bi := a.layoutBase().Input.TabIndex, b.layoutBase().Input.TabIndex
+		if ai < bi {
+			return -1
+		}
+		if ai > bi {
+			return 1
+		}
+		return 0
+	})
 	if len(buttons) == 0 {
 		f.set(nil)
 		return
@@ -37,7 +53,7 @@ func (f *focusState) move(root *component, viewport rl.Vector2, backward bool) {
 }
 
 func tabOrder(node *component, viewport rl.Vector2, buttons []*component) []*component {
-	if node.focusable(viewport) {
+	if node.focusable(viewport) && node.layoutBase().Input.TabIndex >= 0 {
 		buttons = append(buttons, node)
 	}
 	for _, child := range node.children {
@@ -47,7 +63,7 @@ func tabOrder(node *component, viewport rl.Vector2, buttons []*component) []*com
 }
 
 func (c *component) focusable(viewport rl.Vector2) bool {
-	if !c.enabledButton() {
+	if !c.inputEnabled() || (!c.enabledButton() && !c.layoutBase().Input.Focusable) {
 		return false
 	}
 	b := c.bounds
@@ -72,20 +88,53 @@ func (f *focusState) cancelPress() {
 }
 
 func (f *focusState) readKeyboard(root *component, viewport rl.Vector2) {
-	if f.key != 0 && !rl.IsKeyDown(f.key) {
-		f.activate(f.key, false, true)
-	}
 	shift := rl.IsKeyDown(rl.KeyLeftShift) || rl.IsKeyDown(rl.KeyRightShift)
+	dispatch := func(kind EventKind, key int32) bool {
+		event := &InputEvent{Kind: kind, Key: key, Shift: shift,
+			Ctrl: rl.IsKeyDown(rl.KeyLeftControl) || rl.IsKeyDown(rl.KeyRightControl),
+			Alt:  rl.IsKeyDown(rl.KeyLeftAlt) || rl.IsKeyDown(rl.KeyRightAlt)}
+		if f.button.inputEnabled() {
+			routeEvent(f.button, event)
+		}
+		return event.Handled
+	}
+	release := func(key int32) {
+		if dispatch(KeyUp, key) {
+			if f.key == key {
+				f.cancelPress()
+			}
+		} else {
+			f.activate(key, false, true)
+		}
+	}
+	f.keys = slices.DeleteFunc(f.keys, func(key int32) bool {
+		if rl.IsKeyDown(key) {
+			return false
+		}
+		release(key)
+		return true
+	})
 	// The press queue also includes taps that begin and end between frames.
 	for key := rl.GetKeyPressed(); key != 0; key = rl.GetKeyPressed() {
-		switch key {
-		case rl.KeyLeftShift, rl.KeyRightShift:
+		if key == rl.KeyLeftShift || key == rl.KeyRightShift {
 			shift = true
-		case rl.KeyTab:
-			f.cancelPress()
-			f.move(root, viewport, shift)
-		case rl.KeySpace, rl.KeyEnter, rl.KeyKpEnter:
-			f.activate(key, true, !rl.IsKeyDown(key))
+		}
+		handled := dispatch(KeyDown, key)
+		if !handled {
+			switch key {
+			case rl.KeyTab:
+				f.cancelPress()
+				f.move(root, viewport, shift)
+			case rl.KeySpace, rl.KeyEnter, rl.KeyKpEnter:
+				f.activate(key, true, false)
+			}
+		}
+		if rl.IsKeyDown(key) {
+			if !slices.Contains(f.keys, key) {
+				f.keys = append(f.keys, key)
+			}
+		} else {
+			release(key)
 		}
 	}
 }

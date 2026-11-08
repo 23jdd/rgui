@@ -22,6 +22,7 @@ type Node interface {
 // Its zero value has no preferred size and produces no primitives.
 type BaseNode struct {
 	Box
+	Input   InputOptions
 	bounds  rl.Rectangle
 	slot    rl.Rectangle
 	desired rl.Vector2
@@ -97,7 +98,6 @@ type component struct {
 	readText    func() string
 	onClick     func()
 	button      bool
-	disabled    bool
 	text        string
 	boundText   *binding
 	measuredBox Box
@@ -133,13 +133,13 @@ func Button(label string, onClick func()) Node {
 // WithDisabled configures whether a button accepts input. Use it on the UI thread.
 func WithDisabled(node Node, disabled bool) Node {
 	if c, ok := node.(*component); ok && c.button {
-		c.disabled = disabled
+		c.Input.Disabled = disabled
 	}
 	return node
 }
 
 func (c *component) enabledButton() bool {
-	return c != nil && c.button && !c.disabled && c.onClick != nil
+	return c != nil && c.button && c.onClick != nil && c.inputEnabled()
 }
 
 func (c *component) mount(pending subscriptions) {
@@ -176,16 +176,7 @@ const (
 )
 
 func (c *component) buttonAt(point rl.Vector2) *component {
-	if c.enabledButton() && c.bounds.Width > 0 && c.bounds.Height > 0 && rl.CheckCollisionPointRec(point, c.bounds) {
-		return c
-	}
-	for i := len(c.children) - 1; i >= 0; i-- {
-		child := c.children[i]
-		if button := child.buttonAt(point); button != nil {
-			return button
-		}
-	}
-	return nil
+	return nearestButton(hitNode(c, point))
 }
 
 func (c *component) draw(font rl.Font, hovered, pressed, focused *component) {

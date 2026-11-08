@@ -177,6 +177,8 @@ type Node interface {
 
 自定义容器使用 `WithChildren(custom, children...)`。子节点按声明顺序叠放在内容区域。保留返回的 `Node`，在 UI 线程用 `SetChildren(container, children...)` 更新。仍在列表中的节点保留状态，移除节点释放订阅。
 
+用 `BaseNode.Input` 或 `WithInput(node, options)` 注册输入处理。事件先预览再冒泡，设置 `Handled` 可停止后续处理和默认动作。鼠标捕获通过 `InputEvent.CapturePointer()` 请求，释放鼠标、移除节点或窗口失焦时自动结束。Tab 按 `TabIndex` 和声明顺序导航，负值跳过 Tab。
+
 ## 每次改动的工作流
 
 1. 选一条验收条件，写清触发动作和预期结果。涉及公开 API 时，先写期望的调用代码。

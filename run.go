@@ -65,11 +65,13 @@ func Run(config WindowConfig, view func() Node) error {
 
 	var click clickState
 	var focus focusState
+	var input inputRouter
 	var previousViewport rl.Vector2
 	style := textStyle(font)
 	measure := func(value string) rl.Vector2 { return draw.MeasureText(value, style) }
 	for !rl.WindowShouldClose() {
 		pruneInput(&click, &focus)
+		input.prune()
 		viewport := rl.Vector2{X: float32(rl.GetScreenWidth()), Y: float32(rl.GetScreenHeight())}
 		if viewport != previousViewport || root.layoutChanged() {
 			layoutRoot(root, viewport, measure)
@@ -82,21 +84,43 @@ func Run(config WindowConfig, view func() Node) error {
 			if !focus.button.focusable(viewport) {
 				focus.set(nil)
 			}
-			hovered = windowButtonAt(root, mouse, viewport)
+			hit := hitWindow(root, mouse, viewport)
+			hovered = nearestButton(hit)
 			mouseDown := rl.IsMouseButtonPressed(rl.MouseButtonLeft)
 			if mouseDown {
-				focus.cancelPress()
-				focus.set(hovered)
+				if !input.pointer(PointerDown, hit, mouse, rl.Vector2{}) {
+					if hit != nil && hit.pending == nil {
+						hit, hovered = nil, nil
+					}
+					focus.cancelPress()
+					focus.set(nearestFocusable(hit, viewport))
+					click.update(hovered, true, false)
+				}
 			}
-			click.update(hovered, mouseDown, rl.IsMouseButtonReleased(rl.MouseButtonLeft))
+			if mouse != input.point {
+				input.pointer(PointerMove, hit, mouse, rl.Vector2{})
+			}
+			if wheel := rl.GetMouseWheelMoveV(); wheel != (rl.Vector2{}) {
+				input.pointer(PointerWheel, hit, mouse, wheel)
+			}
+			if rl.IsMouseButtonReleased(rl.MouseButtonLeft) {
+				if input.pointer(PointerUp, hit, mouse, rl.Vector2{}) {
+					click.pressed = nil
+				} else {
+					click.update(hovered, false, true)
+				}
+			}
 			focus.readKeyboard(root, viewport)
 		} else {
 			click.pressed = nil
 			focus.cancelPress()
+			focus.keys = nil
+			input.cancel()
 		}
 		bindingsChanged := len(pending) > 0
 		flushBindings(pending)
 		pruneInput(&click, &focus)
+		input.prune()
 		if bindingsChanged || root.layoutChanged() {
 			layoutRoot(root, viewport, measure)
 			if active {
@@ -124,10 +148,7 @@ func Run(config WindowConfig, view func() Node) error {
 }
 
 func windowButtonAt(root *component, mouse, viewport rl.Vector2) *component {
-	if mouse.X < 0 || mouse.Y < 0 || mouse.X >= viewport.X || mouse.Y >= viewport.Y {
-		return nil
-	}
-	return root.buttonAt(mouse)
+	return nearestButton(hitWindow(root, mouse, viewport))
 }
 
 type clickState struct {
