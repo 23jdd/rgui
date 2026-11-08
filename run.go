@@ -27,6 +27,8 @@ func Run(config WindowConfig, view func() Node) error {
 		return fmt.Errorf("open raylib window")
 	}
 	defer rl.CloseWindow()
+	// Escape belongs to the focused input while the IME is composing.
+	rl.SetExitKey(rl.KeyNull)
 	// Raylib retains its window flags across CloseWindow.
 	defer rl.ClearWindowState(settings.flags &^ rl.FlagWindowHighdpi)
 	// Clear old limits before applying a new minimum.
@@ -63,6 +65,9 @@ func Run(config WindowConfig, view func() Node) error {
 	pending := make(subscriptions)
 	defer root.unmount()
 	root.mount(pending)
+	ime := imeSession{platform: openIME()}
+	defer ime.platform.close()
+	defer ime.setTarget(nil)
 
 	var click clickState
 	var focus focusState
@@ -94,6 +99,8 @@ func Run(config WindowConfig, view func() Node) error {
 		// raylib already reports the pointer in logical coordinates.
 		mouse := rl.GetMousePosition()
 		active := rl.IsWindowFocused()
+		ime.sync(focus.button, active, window)
+		imeBusy := ime.drain()
 		var hovered *component
 		if active {
 			if !focus.button.focusable(viewport) {
@@ -135,7 +142,9 @@ func Run(config WindowConfig, view func() Node) error {
 			if rl.IsMouseButtonReleased(rl.MouseButtonRight) {
 				input.secondary(PointerUp, hit, mouse)
 			}
-			focus.readKeyboard(root, viewport)
+			if focus.readKeyboard(root, viewport, imeBusy) {
+				break
+			}
 		} else {
 			click.pressed = nil
 			focus.cancelPress()
@@ -166,6 +175,7 @@ func Run(config WindowConfig, view func() Node) error {
 				pressed = focused
 			}
 		}
+		ime.sync(focused, active, window)
 
 		state := paintState{hovered: hovered, pressed: pressed, focused: focused}
 		rl.BeginDrawing()

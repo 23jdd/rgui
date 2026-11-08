@@ -183,8 +183,16 @@ type Node interface {
 
 - `PointerEnterHandler` / `PointerLeaveHandler` 直接通知指针路径上进入或离开的节点。指针捕获期间仍按实际命中位置更新。
 - `Tappable` / `SecondaryTappable` 在鼠标主键或右键于同一目标按下并释放时触发。原始指针事件的 `Button` 字段可区分两键。指针捕获由主键操作控制。
-- `TextInputHandler` 从焦点接收 raylib 提交的 Unicode 字符，文本位于 `InputEvent.Text`。IME 预编辑和候选窗需要独立接入。
+- `TextInputHandler` 从焦点接收已提交的 Unicode 文本，文本位于 `InputEvent.Text`。
 - `KeyRepeatHandler` 接收系统按键重复，和初次按下分开派发，内置按钮的默认激活只执行一次。
+
+### Windows 输入法
+
+可编辑节点实现 `IMEClient.IMECaret()`，返回相对内容区域的光标矩形。框架换算成 Windows 客户区物理像素，由系统输入法显示候选窗。`CompositionHandler` 接收预编辑、光标位置和选区，偏移按 Unicode 码点计。空预编辑表示清除临时文字。仅 `TextInputHandler` 收到的提交内容应写入文档。
+
+切换焦点、移除节点或窗口失焦会取消预编辑。组合期间的按键由输入法处理，确认候选不会同时触发控件的 Enter 操作。其他平台沿用 raylib 的普通字符输入。
+
+在 Windows 上运行 `go run ./examples/ime`，点击输入区，使用中文输入法输入「你好」，检查预编辑、候选窗和提交。示例字体仅加载演示所需的中文字形。设置 `RGUI_WINDOW_TEST=1` 可运行原生窗口消息桥接测试。
 
 布局复用约束和属性未变化的节点结果。对齐变化只使放置失效，尺寸变化同时使测量失效。直接修改 `Box` 仍会被框架检测；自定义节点的内容尺寸改变时可调用 `BaseNode.InvalidateMeasure()`。
 

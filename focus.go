@@ -91,7 +91,7 @@ func (f *focusState) cancelPress() {
 	f.key = 0
 }
 
-func (f *focusState) readKeyboard(root *component, viewport rl.Vector2) {
+func (f *focusState) readKeyboard(root *component, viewport rl.Vector2, imeBusy bool) (closeRequested bool) {
 	shift := rl.IsKeyDown(rl.KeyLeftShift) || rl.IsKeyDown(rl.KeyRightShift)
 	dispatch := func(kind EventKind, key int32, text string) bool {
 		event := &InputEvent{Kind: kind, Key: key, Text: text, Shift: shift,
@@ -103,7 +103,8 @@ func (f *focusState) readKeyboard(root *component, viewport rl.Vector2) {
 		return event.Handled
 	}
 	release := func(key int32) {
-		if dispatch(KeyUp, key, "") {
+		handled := dispatch(KeyUp, key, "")
+		if handled || imeBusy {
 			if f.key == key {
 				f.cancelPress()
 			}
@@ -120,6 +121,9 @@ func (f *focusState) readKeyboard(root *component, viewport rl.Vector2) {
 	})
 	// The press queue also includes taps that begin and end between frames.
 	for key := rl.GetKeyPressed(); key != 0; key = rl.GetKeyPressed() {
+		if imeBusy {
+			continue
+		}
 		if key == rl.KeyLeftShift || key == rl.KeyRightShift {
 			shift = true
 		}
@@ -131,6 +135,8 @@ func (f *focusState) readKeyboard(root *component, viewport rl.Vector2) {
 				f.move(root, viewport, shift)
 			case rl.KeySpace, rl.KeyEnter, rl.KeyKpEnter:
 				f.activate(key, true, false)
+			case rl.KeyEscape:
+				closeRequested = true
 			}
 		}
 		if rl.IsKeyDown(key) {
@@ -142,11 +148,14 @@ func (f *focusState) readKeyboard(root *component, viewport rl.Vector2) {
 		}
 	}
 	for _, key := range f.keys {
-		if rl.IsKeyPressedRepeat(key) {
+		if !imeBusy && rl.IsKeyPressedRepeat(key) {
 			dispatch(KeyRepeat, key, "")
 		}
 	}
 	for ch := rl.GetCharPressed(); ch != 0; ch = rl.GetCharPressed() {
-		dispatch(TextInput, 0, string(rune(ch)))
+		if !imeBusy {
+			dispatch(TextInput, 0, string(rune(ch)))
+		}
 	}
+	return closeRequested
 }

@@ -24,6 +24,7 @@ const (
 	SecondaryTap
 	KeyRepeat
 	TextInput
+	CompositionChanged
 )
 
 type EventPhase uint8
@@ -68,6 +69,7 @@ type (
 	SecondaryTappable         interface{ SecondaryTapped(*InputEvent) }
 	KeyRepeatHandler          interface{ KeyRepeat(*InputEvent) }
 	TextInputHandler          interface{ TextInput(*InputEvent) }
+	CompositionHandler        interface{ CompositionChanged(*InputEvent) }
 )
 
 // Focusable opts a node into focus navigation and receives focus notifications.
@@ -93,6 +95,7 @@ type InputEvent struct {
 	Button                  PointerButton
 	Key                     int32
 	Text                    string
+	Composition             Composition
 	Shift, Ctrl, Alt        bool
 	Handled                 bool
 
@@ -274,6 +277,10 @@ func dispatchInput(node Node, event *InputEvent) {
 	case TextInput:
 		if handler, ok := node.(TextInputHandler); ok {
 			handler.TextInput(event)
+		}
+	case CompositionChanged:
+		if handler, ok := node.(CompositionHandler); ok {
+			handler.CompositionChanged(event)
 		}
 	}
 }
