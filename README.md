@@ -179,6 +179,8 @@ type Node interface {
 
 用 `BaseNode.Input` 或 `WithInput(node, options)` 注册输入处理。事件先预览再冒泡，设置 `Handled` 可停止后续处理和默认动作。鼠标捕获通过 `InputEvent.CapturePointer()` 请求，释放鼠标、移除节点或窗口失焦时自动结束。Tab 按 `TabIndex` 和声明顺序导航，负值跳过 Tab。
 
+布局复用约束和属性未变化的节点结果。对齐变化只使放置失效，尺寸变化同时使测量失效。直接修改 `Box` 仍会被框架检测；自定义节点的内容尺寸改变时可调用 `BaseNode.InvalidateMeasure()`。
+
 ## 每次改动的工作流
 
 1. 选一条验收条件，写清触发动作和预期结果。涉及公开 API 时，先写期望的调用代码。

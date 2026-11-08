@@ -90,20 +90,23 @@ func componentOf(node Node) *component {
 
 type component struct {
 	BaseNode
-	children    []*component
-	parent      *component
-	pending     subscriptions
-	mutable     bool
-	treeDirty   bool
-	readText    func() string
-	onClick     func()
-	button      bool
-	text        string
-	boundText   *binding
-	measuredBox Box
-	panel       panelLayout
-	legacy      bool
-	custom      Node
+	children                 []*component
+	parent                   *component
+	pending                  subscriptions
+	mutable                  bool
+	treeDirty                bool
+	readText                 func() string
+	onClick                  func()
+	button                   bool
+	text                     string
+	boundText                *binding
+	measuredBox              Box
+	measuredText             string
+	available                rl.Vector2
+	measureValid, placeValid bool
+	panel                    panelLayout
+	legacy                   bool
+	custom                   Node
 }
 
 func (c *component) layoutBase() *BaseNode {
@@ -144,9 +147,16 @@ func (c *component) enabledButton() bool {
 
 func (c *component) mount(pending subscriptions) {
 	c.pending = pending
+	c.invalidateMeasure()
 	if c.readText != nil {
 		c.boundText = &binding{
-			evaluate:     func() { c.text = c.readText() },
+			evaluate: func() {
+				value := c.readText()
+				if value != c.text {
+					c.text = value
+					c.invalidateMeasure()
+				}
+			},
 			dependencies: make(map[*subscriptions]struct{}),
 			pending:      pending,
 		}

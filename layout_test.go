@@ -92,3 +92,39 @@ func TestEmbeddedBaseNodeBoxAndLayoutChanges(t *testing.T) {
 		t.Fatalf("updated content bounds = %+v", got)
 	}
 }
+
+type measuredNode struct {
+	BaseNode
+	measures, placements int
+}
+
+func (n *measuredNode) Measure(MeasureContext) rl.Vector2 {
+	n.measures++
+	return rl.Vector2{X: 20, Y: 20}
+}
+
+func (n *measuredNode) Place(slot rl.Rectangle) {
+	n.placements++
+	n.BaseNode.Place(slot)
+}
+
+func TestLayoutReusesCleanSiblingsAndPlacement(t *testing.T) {
+	first, second := &measuredNode{}, &measuredNode{}
+	root := StackPanel(Vertical, 0, first, second)
+	testLayout(root, 100, 100)
+	testLayout(root, 100, 100)
+	if first.measures != 1 || first.placements != 1 || second.measures != 1 || second.placements != 1 {
+		t.Fatal("unchanged layout should reuse both passes")
+	}
+	first.HorizontalAlignment = End
+	testLayout(root, 100, 100)
+	if first.measures != 1 || first.placements != 2 || second.placements != 1 {
+		t.Fatal("alignment changes should only place the affected branch")
+	}
+	first.MinHeight = 25
+	first.MinHeight = 30
+	testLayout(root, 100, 100)
+	if first.measures != 2 || second.measures != 1 || second.Bounds().Y != 30 {
+		t.Fatal("size changes should remeasure the affected branch once and move its sibling")
+	}
+}

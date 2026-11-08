@@ -85,6 +85,7 @@ func (c *component) replaceChildren(nodes []Node) error {
 	old := c.children
 	c.children = next
 	c.treeDirty = true
+	c.invalidateMeasure()
 	for _, child := range next {
 		child.parent = c
 		if c.pending != nil && !slices.Contains(old, child) {
