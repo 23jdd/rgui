@@ -154,6 +154,8 @@ func Run(config WindowConfig, view func() Node) error {
 			input.updateHover(nil, mouse)
 		}
 		bindingsChanged := len(pending) > 0
+		tickControls(root, time.Now(), active, focus.button)
+		bindingsChanged = bindingsChanged || len(pending) > 0
 		flushBindings(pending)
 		pruneInput(&click, &focus)
 		input.prune()
