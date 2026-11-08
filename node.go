@@ -6,9 +6,46 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-// Node is a component in a view. Create a new node for each position in the tree.
-type Node struct {
+// Node returns the primitives to paint, in back-to-front order.
+// Create a new node for each position in the tree. Primitives may read current
+// state and should describe drawing without changing application state.
+type Node interface {
+	Primitives(PaintContext) []draw.Primitive
+}
+
+// PaintContext supplies the arranged content bounds and the window's default font.
+type PaintContext struct {
+	Bounds rl.Rectangle
+	Font   rl.Font
+
+	hovered, pressed, focused bool
+}
+
+// Measurable optionally supplies a custom node's desired size before padding.
+// The available dimensions may be infinite. Return a finite size.
+type Measurable interface {
+	Measure(available rl.Vector2) rl.Vector2
+}
+
+// Element is a built-in node, or a custom Node with layout options attached.
+type Element struct {
 	component *component
+}
+
+func componentOf(node Node) *component {
+	switch node := node.(type) {
+	case nil:
+		return nil
+	case Element:
+		return node.component
+	case *Element:
+		if node == nil {
+			return nil
+		}
+		return node.component
+	default:
+		return &component{custom: node}
+	}
 }
 
 type component struct {
@@ -24,27 +61,28 @@ type component struct {
 	box       Box
 	panel     panelLayout
 	legacy    bool
+	custom    Node
 }
 
 // Stack lays out its children vertically in declaration order.
-func Stack(children ...Node) Node {
+func Stack(children ...Node) Element {
 	stack := StackPanel(Vertical, stackGap, children...)
 	stack.component.legacy = true
 	return stack
 }
 
 // Text displays the result of read. The callback should only compute text.
-func Text(read func() string) Node {
-	return Node{&component{readText: read}}
+func Text(read func() string) Element {
+	return Element{&component{readText: read}}
 }
 
 // Button calls onClick on a completed mouse click or keyboard activation.
-func Button(label string, onClick func()) Node {
-	return Node{&component{text: label, button: true, onClick: onClick}}
+func Button(label string, onClick func()) Element {
+	return Element{&component{text: label, button: true, onClick: onClick}}
 }
 
 // WithDisabled sets whether this button accepts input. Use it on the UI thread.
-func (n Node) WithDisabled(disabled bool) Node {
+func (n Element) WithDisabled(disabled bool) Element {
 	n.component.disabled = disabled
 	return n
 }
@@ -107,37 +145,68 @@ func (c *component) draw(font rl.Font, hovered, pressed, focused *component) {
 	if c.bounds.Width <= 0 || c.bounds.Height <= 0 {
 		return
 	}
-	style := textStyle(font)
+	ctx := PaintContext{
+		Bounds:  c.bounds,
+		Font:    font,
+		hovered: c == hovered, pressed: c == pressed, focused: c == focused,
+	}
+	primitives := Element{c}.Primitives(ctx)
+	if c.custom != nil {
+		var canvas draw.Canvas
+		canvas.Clip(inset(ctx.Bounds, c.box.Padding), func() { draw.Render(primitives) })
+		return
+	}
+	draw.Render(primitives)
+}
+
+// Primitives returns the element's own paint list. Panels paint their children
+// through the view tree.
+func (n Element) Primitives(ctx PaintContext) []draw.Primitive {
+	c := n.component
+	if c == nil || c.panel != nil {
+		return nil
+	}
+	if c.custom != nil {
+		ctx.Bounds = inset(ctx.Bounds, c.box.Padding)
+		return c.custom.Primitives(ctx)
+	}
+	style := textStyle(ctx.Font)
+	var primitives []draw.Primitive
 	if c.button {
 		fill := rl.DarkBlue
 		switch {
 		case !c.enabledButton():
 			fill = rl.NewColor(57, 64, 76, 255)
 			style.Color = rl.LightGray
-		case c == pressed:
+		case ctx.pressed:
 			fill = rl.DarkGray
-		case c == hovered:
+		case ctx.hovered:
 			fill = rl.Blue
 		}
-		draw.Rect(c.bounds, 0, draw.Style{Fill: fill})
-		if c == focused {
-			draw.Rect(inset(c.bounds, UniformInsets(2)), 0, draw.Style{
-				Stroke: draw.Stroke{Color: rl.Gold, Width: 2},
+		primitives = append(primitives, draw.RectPrimitive{Bounds: ctx.Bounds, Style: draw.Style{Fill: fill}})
+		if ctx.focused {
+			primitives = append(primitives, draw.RectPrimitive{
+				Bounds: inset(ctx.Bounds, UniformInsets(2)),
+				Style:  draw.Style{Stroke: draw.Stroke{Color: rl.Gold, Width: 2}},
 			})
 		}
 	}
-	content := inset(c.bounds, c.box.Padding)
+	content := inset(ctx.Bounds, c.box.Padding)
 	size := draw.MeasureText(c.text, style)
-	position := rl.Vector2{
-		X: content.X + (content.Width-size.X)/2,
-		Y: content.Y + (content.Height-size.Y)/2,
+	text := draw.TextPrimitive{
+		Position: rl.Vector2{
+			X: content.X + (content.Width-size.X)/2,
+			Y: content.Y + (content.Height-size.Y)/2,
+		},
+		Text: c.text, Style: style,
 	}
 	if size.X <= content.Width && size.Y <= content.Height {
-		draw.Text(position, c.text, style)
-		return
+		return append(primitives, text)
 	}
-	var canvas draw.Canvas
-	canvas.Clip(content, func() { draw.Text(position, c.text, style) })
+	return append(primitives, draw.PrimitiveFunc(func() {
+		var canvas draw.Canvas
+		canvas.Clip(content, text.Draw)
+	}))
 }
 
 func textStyle(font rl.Font) draw.TextStyle {

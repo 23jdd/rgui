@@ -38,7 +38,7 @@ type Cell struct {
 
 // Grid arranges cells on explicit tracks. An empty axis has one Star(1) track.
 // A cell outside the defined tracks panics during construction.
-func Grid(rows, columns []Track, cells ...Cell) Node {
+func Grid(rows, columns []Track, cells ...Cell) Element {
 	g := &gridLayout{rows: gridTracks(rows), columns: gridTracks(columns)}
 	children := make([]Node, 0, len(cells))
 	for _, cell := range cells {

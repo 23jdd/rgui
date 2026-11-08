@@ -43,9 +43,14 @@ type Box struct {
 }
 
 // WithLayout configures this node and returns it for use in a view expression.
-func (n Node) WithLayout(box Box) Node {
+func (n Element) WithLayout(box Box) Element {
 	n.component.box = box
 	return n
+}
+
+// WithLayout attaches layout options to a built-in or custom node.
+func WithLayout(node Node, box Box) Element {
+	return Element{componentOf(node)}.WithLayout(box)
 }
 
 type measureText func(string) rl.Vector2
@@ -55,16 +60,19 @@ type panelLayout interface {
 	arrange(children []*component, area rl.Rectangle)
 }
 
-func panel(layout panelLayout, children []Node) Node {
+func panel(layout panelLayout, children []Node) Element {
 	node := &component{panel: layout, children: make([]*component, len(children))}
 	for i, child := range children {
-		node.children[i] = child.component
+		node.children[i] = componentOf(child)
+		if node.children[i] == nil {
+			panic("rgui: panel child is nil")
+		}
 	}
-	return Node{node}
+	return Element{node}
 }
 
 // StackPanel arranges children in declaration order along direction.
-func StackPanel(direction Direction, gap float32, children ...Node) Node {
+func StackPanel(direction Direction, gap float32, children ...Node) Element {
 	return panel(stackLayout{direction: direction, gap: max(0, gap)}, children)
 }
 
@@ -141,12 +149,14 @@ func (c *component) measure(available rl.Vector2, text measureText) rl.Vector2 {
 			}
 		}
 		desired = c.panel.measure(c.children, rl.Vector2{X: content.Width, Y: content.Height}, measure)
-	} else {
+	} else if c.custom == nil {
 		desired = text(c.text)
 		if c.button {
 			desired.X += 24
 			desired.Y = max(desired.Y, rowHeight)
 		}
+	} else if node, ok := c.custom.(Measurable); ok {
+		desired = node.Measure(rl.Vector2{X: content.Width, Y: content.Height})
 	}
 	desired.X += box.Padding.Left + box.Padding.Right
 	desired.Y += box.Padding.Top + box.Padding.Bottom
@@ -201,14 +211,14 @@ func inset(area rl.Rectangle, sides Insets) rl.Rectangle {
 
 func layoutRoot(root *component, viewport rl.Vector2, text measureText) {
 	area := inset(rl.Rectangle{Width: viewport.X, Height: viewport.Y}, UniformInsets(16))
-	if root.legacy || root.panel == nil {
+	if root.legacy || (root.panel == nil && root.custom == nil) {
 		area.Width = min(area.Width, 280)
 		area.X = (viewport.X - area.Width) / 2
 		area.Y = 36
 		area.Height = max(0, viewport.Y-area.Y)
 	}
 	root.measure(rl.Vector2{X: area.Width, Y: area.Height}, text)
-	if root.panel == nil {
+	if root.panel == nil && root.custom == nil {
 		area.Height = root.desired.Y
 		if root.box.Height <= 0 {
 			area.Height = max(rowHeight, area.Height)

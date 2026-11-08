@@ -11,12 +11,12 @@ func testText(value string) rl.Vector2 {
 	return rl.Vector2{X: float32(utf8.RuneCountInString(value) * 10), Y: 20}
 }
 
-func testLayout(node Node, width, height float32) {
+func testLayout(node Element, width, height float32) {
 	node.component.measure(rl.Vector2{X: width, Y: height}, testText)
 	node.component.arrange(rl.Rectangle{Width: width, Height: height})
 }
 
-func checkBounds(t *testing.T, node Node, x, y, width, height float32) {
+func checkBounds(t *testing.T, node Element, x, y, width, height float32) {
 	t.Helper()
 	want := rl.Rectangle{X: x, Y: y, Width: width, Height: height}
 	if got := node.component.bounds; got != want {

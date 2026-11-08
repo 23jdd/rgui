@@ -118,6 +118,17 @@ go run ./examples/primitives
 
 运行 `go run ./examples/layout`。按两次 Tab 选中「+」，按 Space 加一，再用 Tab 切到 `Reset`，按 Enter 清零。
 
+## 自定义节点
+
+`rgui.Node` 是 Go 接口。实现 `Primitives(rgui.PaintContext) []draw.Primitive` 即可在任意现有面板中放入自定义节点，也可以直接从 `View` 返回。每帧由框架传入布局完成后的内容区域和默认字体，再按切片顺序绘制。自定义节点的绘制裁剪到其内容区域。
+
+- 可选的 `Measure(available rl.Vector2) rl.Vector2` 返回内容期望尺寸，输入的宽高可能是正无穷。没有实现测量的节点可通过 `rgui.WithLayout(node, rgui.Box{...})` 指定尺寸，也可由父容器分配空间。
+- 内置构造函数返回实现了 `Node` 的 `Element`，仍可链式调用 `WithLayout` 和 `WithDisabled`。持有 `Node` 接口值时，用包级的 `rgui.WithLayout`。
+- 绘制时可以读取 Signal 的最新值。`Measure` 应依据传入的约束与稳定的尺寸配置计算，读取 Signal 不会单独让布局失效。自定义节点接口当前提供测量和绘制能力。
+- `draw.RectPrimitive` 和 `draw.TextPrimitive` 可直接返回，其他现有图元可通过 `draw.PrimitiveFunc` 加入列表。
+
+运行 `go run ./examples/customnode` 查看自定义进度条。按下 `Advance` 后，文本和进度条读取同一个 Signal。
+
 ## 每次改动的工作流
 
 1. 选一条验收条件，写清触发动作和预期结果。涉及公开 API 时，先写期望的调用代码。

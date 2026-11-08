@@ -17,7 +17,7 @@ func TestFocusTraversal(t *testing.T) {
 	var focus focusState
 	for _, step := range []struct {
 		backward bool
-		want     Node
+		want     Element
 	}{
 		{false, first},
 		{false, last},
