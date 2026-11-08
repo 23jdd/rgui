@@ -104,6 +104,9 @@ func Run(config WindowConfig, view func() Node) error {
 		imeBusy := ime.drain()
 		var hovered *component
 		if active {
+			input.shift = rl.IsKeyDown(rl.KeyLeftShift) || rl.IsKeyDown(rl.KeyRightShift)
+			input.ctrl = rl.IsKeyDown(rl.KeyLeftControl) || rl.IsKeyDown(rl.KeyRightControl)
+			input.alt = rl.IsKeyDown(rl.KeyLeftAlt) || rl.IsKeyDown(rl.KeyRightAlt)
 			if !focus.button.focusable(viewport) {
 				focus.set(nil)
 			}

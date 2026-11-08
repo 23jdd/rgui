@@ -299,6 +299,7 @@ func dispatchInput(node Node, event *InputEvent) {
 type inputRouter struct {
 	focus                 *focusState
 	viewport              rl.Vector2
+	shift, ctrl, alt      bool
 	capture               *component
 	hoverPath             []*component
 	press, secondaryPress *component
@@ -374,7 +375,8 @@ func (r *inputRouter) pointer(kind EventKind, hit *component, point, wheel rl.Ve
 	if kind == PointerDown || kind == PointerUp || (kind == PointerMove && r.down) {
 		button = PrimaryButton
 	}
-	event := &InputEvent{Kind: kind, Position: point, Wheel: wheel, Button: button, router: r}
+	event := r.pointerEvent(kind, point, button)
+	event.Wheel = wheel
 	if target.inputEnabled() && target.pending != nil {
 		routeEvent(target, event)
 	}
@@ -390,7 +392,7 @@ func (r *inputRouter) pointer(kind EventKind, hit *component, point, wheel rl.Ve
 		r.down = false
 		r.setCapture(nil)
 		if !event.Handled && pressed == hit && hit.inputEnabled() && hit.pending != nil {
-			tap := &InputEvent{Kind: Tap, Position: point, Button: PrimaryButton, router: r}
+			tap := r.pointerEvent(Tap, point, PrimaryButton)
 			routeEvent(hit, tap)
 			return tap.Handled
 		}
@@ -398,8 +400,12 @@ func (r *inputRouter) pointer(kind EventKind, hit *component, point, wheel rl.Ve
 	return event.Handled
 }
 
+func (r *inputRouter) pointerEvent(kind EventKind, point rl.Vector2, button PointerButton) *InputEvent {
+	return &InputEvent{Kind: kind, Position: point, Button: button, Shift: r.shift, Ctrl: r.ctrl, Alt: r.alt, router: r}
+}
+
 func (r *inputRouter) secondary(kind EventKind, hit *component, point rl.Vector2) {
-	event := &InputEvent{Kind: kind, Position: point, Button: SecondaryButton}
+	event := r.pointerEvent(kind, point, SecondaryButton)
 	if hit.inputEnabled() && hit.pending != nil {
 		routeEvent(hit, event)
 	}
@@ -413,7 +419,7 @@ func (r *inputRouter) secondary(kind EventKind, hit *component, point rl.Vector2
 	pressed := r.secondaryPress
 	r.secondaryPress = nil
 	if !event.Handled && pressed == hit && hit.inputEnabled() && hit.pending != nil {
-		routeEvent(hit, &InputEvent{Kind: SecondaryTap, Position: point, Button: SecondaryButton})
+		routeEvent(hit, r.pointerEvent(SecondaryTap, point, SecondaryButton))
 	}
 }
 

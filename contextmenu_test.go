@@ -18,4 +18,10 @@ func TestContextMenuOpensAtPointer(t *testing.T) {
 	if len(layers) != 1 || layers[0].children[0].bounds.X != 10 || layers[0].children[0].bounds.Y != 20 {
 		t.Fatal("expected popup at pointer")
 	}
+	routeEvent(componentOf(target), &InputEvent{Kind: SecondaryTap, Position: rl.Vector2{X: 30, Y: 40}})
+	flushBindings(pending)
+	testLayout(root, 300, 200)
+	if bounds := layers[0].children[0].bounds; bounds.X != 30 || bounds.Y != 40 {
+		t.Fatalf("open menu did not move to the new pointer: %+v", bounds)
+	}
 }
