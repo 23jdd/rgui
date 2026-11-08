@@ -100,6 +100,7 @@ type component struct {
 	readText                 func() string
 	onClick                  func()
 	button                   bool
+	link                     bool
 	text                     string
 	boundText                *binding
 	measuredBox              Box
@@ -278,7 +279,14 @@ func (c *component) Primitives(ctx PaintContext) []Node {
 		case ctx.hovered:
 			fill = rl.Blue
 		}
-		primitives = append(primitives, &RectNode{Rect: c.bounds, Style: draw.Style{Fill: fill}})
+		if c.link {
+			style.Color = rl.SkyBlue
+			if !c.enabledButton() {
+				style.Color = rl.Gray
+			}
+		} else {
+			primitives = append(primitives, &RectNode{Rect: c.bounds, Style: draw.Style{Fill: fill}})
+		}
 		if ctx.focused {
 			primitives = append(primitives, &RectNode{
 				Rect:  inset(c.bounds, UniformInsets(2)),
@@ -294,6 +302,16 @@ func (c *component) Primitives(ctx PaintContext) []Node {
 			Y: content.Y + (content.Height-size.Y)/2,
 		},
 		Text: c.text, Style: style,
+	}
+	if c.link {
+		underline := rl.Rectangle{X: text.Position.X, Y: text.Position.Y + size.Y - 1, Width: size.X, Height: 1}
+		primitives = append(primitives, DrawNode(func(ctx PaintContext) {
+			canvas := ctx.canvas
+			if canvas == nil {
+				canvas = &draw.Canvas{}
+			}
+			canvas.Clip(content, func() { draw.Rect(underline, 0, draw.Style{Fill: style.Color}) })
+		}))
 	}
 	if size.X <= content.Width && size.Y <= content.Height {
 		return append(primitives, text)
