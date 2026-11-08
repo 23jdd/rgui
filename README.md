@@ -206,6 +206,22 @@ type Node interface {
 
 可用 `RGUI_WINDOW_TEST=1` 运行额外的 raylib 渲染纹理测试，对比局部重绘与整帧重绘的像素结果。
 
+## WPF 控件目录
+
+运行 `go run ./examples/controls` 查看输入、数据展示、文档和墨迹控件。rgui 按微软的分类提供 Go 与 raylib 版本的控件及宿主入口。[WPF 官方控件清单](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/controls/controls-by-category)
+
+| 类别 | rgui 对应接口 |
+| --- | --- |
+| 布局 | `Border`、`BulletDecorator`、`Canvas`、`DockPanel`、`Expander`、`Grid`、`GridSplitter`、`GroupBox`、`ResizeGrip`、`Separator`、`ScrollBar`、`ScrollViewer`、`StackPanel`、`Thumb`、`Viewbox`、`VirtualizingStackPanel`、`WrapPanel`。自定义面板基于 `Node` 与 `WithChildren`，窗口通过 `Run` 创建。 |
+| 按钮与选择 | `Button`、`RepeatButton`、`CheckBox`、`ComboBox`、`ListBox`、`RadioButton`、`Slider`。 |
+| 数据、日期与菜单 | `DataGrid`、`ListView`、`TreeView`、`Calendar`、`DatePicker`、`Menu`、`ContextMenu`、`ToolBar`。 |
+| 导航与反馈 | `Frame`、`Hyperlink`、`Page`、`NavigationWindow`、`TabControl`、`AccessText`、`Label`、`Popup`、`ProgressBar`、`StatusBar`、`TextBlock`、`ToolTip`。 |
+| 对话框 | `OpenFileDialog`、`SaveFileDialog`、`PrintDialog` 在 Windows 打开原生对话框，回调接收用户选定的目标。保存和打印由调用方执行。 |
+| 文档和输入 | `DocumentViewer`、`FlowDocumentPageViewer`、`FlowDocumentReader`、`FlowDocumentScrollViewer`、`StickyNoteControl`、`TextBox`、`RichTextBox`、`PasswordBox`。文档以节点或文本段落传入，富文本使用 `[]TextRun`。 |
+| 媒体和墨迹 | `Image`、`MediaElement`、`SoundPlayerAction`、`InkCanvas`、`InkPresenter`。`MusicMedia` 支持 raylib 音频流，视频由应用提供 `MediaBackend`。墨迹使用主指针记录轨迹。 |
+
+这些接口覆盖目录中的基础行为。WPF 的 XAML、控件模板、XPS 文档格式和 Windows 视频解码属于不同层的能力。
+
 ## 每次改动的工作流
 
 1. 选一条验收条件，写清触发动作和预期结果。涉及公开 API 时，先写期望的调用代码。
