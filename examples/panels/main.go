@@ -32,7 +32,7 @@ func view() rgui.Node {
 }
 
 func main() {
-	if err := rgui.Run(rgui.WindowConfig{Title: "rgui extended panels", Width: 600}, view); err != nil {
+	if err := rgui.Run(rgui.WindowConfig{Title: "rgui extended panels", Width: 600, RetainedRendering: true}, view); err != nil {
 		log.Fatal(err)
 	}
 }

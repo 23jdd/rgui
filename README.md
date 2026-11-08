@@ -185,6 +185,10 @@ type Node interface {
 
 窗口的逻辑视口由实际帧缓冲尺寸除以 DPI 比例得到。布局按物理像素对齐绝对边缘，裁剪采用同一坐标映射，鼠标使用 raylib 提供的逻辑坐标。
 
+`WindowConfig.OnFrame` 可接收布局、绘制和呈现耗时，以及实际重绘范围和像素数。呈现耗时含 raylib 的帧率等待和事件轮询。启用 `RetainedRendering` 后，静止帧只呈现保留的纹理，布局或 DPI 变化触发整帧重绘，按钮状态等局部变化只重绘脏区。自定义节点的绘制输出变化时调用 `InvalidateVisual()` 或 `InvalidateRect(rect)`。扩展面板示例已启用该选项。
+
+可用 `RGUI_WINDOW_TEST=1` 运行额外的 raylib 渲染纹理测试，对比局部重绘与整帧重绘的像素结果。
+
 ## 每次改动的工作流
 
 1. 选一条验收条件，写清触发动作和预期结果。涉及公开 API 时，先写期望的调用代码。

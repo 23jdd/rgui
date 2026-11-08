@@ -110,6 +110,8 @@ type component struct {
 	legacy                   bool
 	custom                   Node
 	decoration               *BorderStyle
+	visualDamage             rl.Rectangle
+	lastDisabled             bool
 }
 
 func (c *component) layoutBase() *BaseNode {
@@ -192,8 +194,9 @@ func (c *component) buttonAt(point rl.Vector2) *component {
 	return nearestButton(hitNode(c, point))
 }
 
-func (c *component) paint(canvas *draw.Canvas, font rl.Font, hovered, pressed, focused *component) {
-	if c.custom != nil || c.panel == nil || c.decoration != nil {
+func (c *component) paint(canvas *draw.Canvas, font rl.Font, hovered, pressed, focused *component, damage *rl.Rectangle) {
+	visible := damage == nil || nonempty(intersectRect(c.bounds, *damage))
+	if visible && (c.custom != nil || c.panel == nil || c.decoration != nil) {
 		c.drawSelf(canvas, font, hovered, pressed, focused)
 	}
 	if len(c.children) == 0 {
@@ -201,10 +204,13 @@ func (c *component) paint(canvas *draw.Canvas, font rl.Font, hovered, pressed, f
 	}
 	children := func() {
 		for _, child := range c.children {
-			child.paint(canvas, font, hovered, pressed, focused)
+			child.paint(canvas, font, hovered, pressed, focused, damage)
 		}
 	}
 	if c.measuredBox.ClipToBounds {
+		if damage != nil && !nonempty(intersectRect(c.contentBounds(), *damage)) {
+			return
+		}
 		canvas.Clip(c.contentBounds(), children)
 	} else {
 		children()

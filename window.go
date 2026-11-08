@@ -24,6 +24,11 @@ type WindowConfig struct {
 	VSync       bool
 	TargetFPS   int32       // Zero uses 60 FPS; -1 removes the frame-rate cap.
 	Background  *color.RGBA // Nil uses the default dark background.
+
+	// RetainedRendering reuses the last painted scene. Custom nodes should
+	// invalidate their visual when their paint output changes.
+	RetainedRendering bool
+	OnFrame           func(FrameStats)
 }
 
 type windowSettings struct {

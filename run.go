@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"time"
 
 	"rgui/draw"
 
@@ -67,16 +68,27 @@ func Run(config WindowConfig, view func() Node) error {
 	var focus focusState
 	var input inputRouter
 	var previousViewport windowViewport
+	var previousPaint paintState
+	var retained retainedFrame
+	defer retained.close()
 	style := textStyle(font)
 	measure := func(value string) rl.Vector2 { return draw.MeasureText(value, style) }
 	for !rl.WindowShouldClose() {
+		var stats FrameStats
+		layoutUpdated := false
+		updateLayout := func(viewport rl.Vector2) {
+			start := time.Now()
+			layoutRoot(root, viewport, measure)
+			stats.Layout += time.Since(start)
+			layoutUpdated = true
+		}
 		pruneInput(&click, &focus)
 		input.prune()
 		window := viewportForPixels(int32(rl.GetRenderWidth()), int32(rl.GetRenderHeight()), rl.GetWindowScaleDPI())
 		viewport := window.size
 		if window != previousViewport || root.layoutChanged() {
 			root.layoutScale = window.scale
-			layoutRoot(root, viewport, measure)
+			updateLayout(viewport)
 			previousViewport = window
 		}
 		// raylib already reports the pointer in logical coordinates.
@@ -125,7 +137,7 @@ func Run(config WindowConfig, view func() Node) error {
 		pruneInput(&click, &focus)
 		input.prune()
 		if bindingsChanged || root.layoutChanged() {
-			layoutRoot(root, viewport, measure)
+			updateLayout(viewport)
 			if active {
 				hovered = windowButtonAt(root, mouse, viewport)
 			}
@@ -142,11 +154,47 @@ func Run(config WindowConfig, view func() Node) error {
 			}
 		}
 
+		state := paintState{hovered: hovered, pressed: pressed, focused: focused}
 		rl.BeginDrawing()
-		rl.ClearBackground(settings.background)
-		canvas := draw.NewCanvas(window.scale, window.height)
-		root.paint(&canvas, font, hovered, pressed, focused)
+		start := time.Now()
+		var cached, fresh bool
+		if config.RetainedRendering {
+			cached, fresh = retained.prepare(window)
+		}
+		if cached {
+			damage := unionRect(root.takeVisualDamage(), state.damage(previousPaint))
+			if layoutUpdated || fresh {
+				damage = window.fullDamage()
+			}
+			pixels := window.pixelDamage(damage)
+			if nonempty(pixels) {
+				stats.Damage = window.logicalDamage(pixels)
+				stats.Painted = true
+				stats.PaintedPixels = int64(pixels.Width) * int64(pixels.Height)
+				retained.update(stats.Damage, settings.background, func(canvas *draw.Canvas) {
+					root.paint(canvas, font, hovered, pressed, focused, &stats.Damage)
+				})
+			}
+		} else {
+			stats.Painted = true
+			stats.Damage = window.fullDamage()
+			stats.PaintedPixels = int64(window.width) * int64(window.height)
+			rl.ClearBackground(settings.background)
+			canvas := draw.NewCanvas(window.scale, window.height)
+			root.paint(&canvas, font, hovered, pressed, focused, nil)
+			rl.DrawRenderBatchActive()
+		}
+		stats.Paint = time.Since(start)
+		start = time.Now()
+		if cached {
+			retained.present()
+		}
 		rl.EndDrawing()
+		stats.Present = time.Since(start)
+		previousPaint = state
+		if config.OnFrame != nil {
+			config.OnFrame(stats)
+		}
 	}
 	return nil
 }
