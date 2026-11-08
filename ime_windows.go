@@ -30,6 +30,7 @@ const (
 var (
 	imm32                   = syscall.NewLazyDLL("imm32.dll")
 	immGetContext           = imm32.NewProc("ImmGetContext")
+	immAssociateContext     = imm32.NewProc("ImmAssociateContext")
 	immReleaseContext       = imm32.NewProc("ImmReleaseContext")
 	immGetCompositionString = imm32.NewProc("ImmGetCompositionStringW")
 	immSetCandidateWindow   = imm32.NewProc("ImmSetCandidateWindow")
@@ -54,6 +55,8 @@ type platformIME struct {
 	messages      []imeMessage
 	skipChars     []uint16
 	highSurrogate uint16
+	suspended     bool
+	savedContext  uintptr
 }
 
 func openIME() *platformIME {
@@ -72,8 +75,22 @@ func openIME() *platformIME {
 func (p *platformIME) close() {
 	if p.window != 0 {
 		p.reset(false)
+		p.suspend(false)
 		removeWindowSubclass.Call(p.window, imeSubclass, 1)
 		delete(imeWindows, p.window)
+	}
+}
+
+func (p *platformIME) suspend(suspended bool) {
+	if p.window == 0 || p.suspended == suspended {
+		return
+	}
+	p.suspended = suspended
+	if suspended {
+		p.savedContext, _, _ = immAssociateContext.Call(p.window, 0)
+	} else {
+		immAssociateContext.Call(p.window, p.savedContext)
+		p.savedContext = 0
 	}
 }
 

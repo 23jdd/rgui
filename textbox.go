@@ -28,6 +28,7 @@ type textBox struct {
 	scroll            float32
 	focused, dragging bool
 	preedit           Composition
+	masked            bool
 }
 
 const editInset = 10
@@ -110,7 +111,9 @@ func (b *textBox) TextInput(e *InputEvent) {
 
 func (b *textBox) CompositionChanged(e *InputEvent) {
 	b.read()
-	b.preedit = e.Composition
+	if !b.masked {
+		b.preedit = e.Composition
+	}
 	b.InvalidateVisual()
 	e.Handled = true
 }
@@ -126,7 +129,7 @@ func (b *textBox) editKey(e *InputEvent) {
 		case rl.KeyA:
 			b.anchor, b.caret = 0, len(text)
 		case rl.KeyC, rl.KeyX:
-			if start != end {
+			if !b.masked && start != end {
 				selected := string(text[start:end])
 				rl.SetClipboardText(selected)
 				if e.Key == rl.KeyX && rl.GetClipboardText() == selected {
@@ -185,7 +188,7 @@ func (b *textBox) width(text []rune) float32 {
 }
 
 func (b *textBox) positionCaret(x float32) {
-	text := b.read()
+	text := b.mask(b.read())
 	x += b.scroll - editInset
 	b.caret = len(text)
 	var previous float32
@@ -218,7 +221,19 @@ func (b *textBox) PointerMove(e *InputEvent) {
 func (b *textBox) PointerUp(*InputEvent)          { b.dragging = false }
 func (b *textBox) PointerCaptureLost(*InputEvent) { b.dragging = false }
 
+func (b *textBox) suppressIME() bool { return b.masked }
+
+func (b *textBox) mask(text []rune) []rune {
+	if b.masked {
+		for i := range text {
+			text[i] = '*'
+		}
+	}
+	return text
+}
+
 func (b *textBox) display(text []rune) (line []rune, cursor, start, end int) {
+	text = b.mask(text)
 	if b.preedit.Text == "" {
 		start, end = b.selection()
 		return text, b.caret, start, end

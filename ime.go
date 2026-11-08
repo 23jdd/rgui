@@ -50,8 +50,15 @@ func (s *imeSession) setTarget(target *component) {
 func (s *imeSession) sync(target *component, active bool, viewport windowViewport) {
 	var client IMEClient
 	if active && target.inputEnabled() && target.pending != nil {
-		client, _ = target.eventNode().(IMEClient)
+		node := target.eventNode()
+		if private, ok := node.(interface{ suppressIME() bool }); ok && private.suppressIME() {
+			s.setTarget(nil)
+			s.platform.suspend(true)
+			return
+		}
+		client, _ = node.(IMEClient)
 	}
+	s.platform.suspend(false)
 	if client == nil {
 		s.setTarget(nil)
 		return
