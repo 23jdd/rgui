@@ -56,6 +56,9 @@ func Run(config WindowConfig, view func() Node) error {
 	if root == nil {
 		return fmt.Errorf("view returned an empty node")
 	}
+	if root.parent != nil || root.pending != nil {
+		return fmt.Errorf("view root already belongs to a tree")
+	}
 	pending := make(subscriptions)
 	defer root.unmount()
 	root.mount(pending)
@@ -66,6 +69,7 @@ func Run(config WindowConfig, view func() Node) error {
 	style := textStyle(font)
 	measure := func(value string) rl.Vector2 { return draw.MeasureText(value, style) }
 	for !rl.WindowShouldClose() {
+		pruneInput(&click, &focus)
 		viewport := rl.Vector2{X: float32(rl.GetScreenWidth()), Y: float32(rl.GetScreenHeight())}
 		if viewport != previousViewport || root.layoutChanged() {
 			layoutRoot(root, viewport, measure)
@@ -92,6 +96,7 @@ func Run(config WindowConfig, view func() Node) error {
 		}
 		bindingsChanged := len(pending) > 0
 		flushBindings(pending)
+		pruneInput(&click, &focus)
 		if bindingsChanged || root.layoutChanged() {
 			layoutRoot(root, viewport, measure)
 			if active {

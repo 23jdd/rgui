@@ -68,12 +68,9 @@ type panelLayout interface {
 }
 
 func panel(layout panelLayout, children []Node) *component {
-	node := &component{panel: layout, children: make([]*component, len(children))}
-	for i, child := range children {
-		node.children[i] = componentOf(child)
-		if node.children[i] == nil {
-			panic("rgui: panel child is nil")
-		}
+	node := &component{panel: layout}
+	if err := node.replaceChildren(children); err != nil {
+		panic(err)
 	}
 	return node
 }
@@ -136,6 +133,7 @@ func (d Direction) slot(area rl.Rectangle, offset, length float32) rl.Rectangle 
 
 func (c *component) measure(available rl.Vector2, text measureText) rl.Vector2 {
 	base := c.layoutBase()
+	c.treeDirty = false
 	box := base.Box
 	c.measuredBox = box
 	x := layoutLimits(box.Width, box.MinWidth, box.MaxWidth)
@@ -144,6 +142,11 @@ func (c *component) measure(available rl.Vector2, text measureText) rl.Vector2 {
 	height := y.clamp(available.Y - box.Margin.Top - box.Margin.Bottom)
 	content := inset(rl.Rectangle{Width: width, Height: height}, box.Padding)
 	var desired rl.Vector2
+	if c.custom != nil {
+		desired = c.custom.Measure(MeasureContext{
+			Available: rl.Vector2{X: content.Width, Y: content.Height}, MeasureText: text,
+		})
+	}
 	if c.panel != nil {
 		measure := text
 		if c.legacy {
@@ -153,17 +156,14 @@ func (c *component) measure(available rl.Vector2, text measureText) rl.Vector2 {
 				return size
 			}
 		}
-		desired = c.panel.measure(c.children, rl.Vector2{X: content.Width, Y: content.Height}, measure)
+		children := c.panel.measure(c.children, rl.Vector2{X: content.Width, Y: content.Height}, measure)
+		desired.X, desired.Y = max(desired.X, children.X), max(desired.Y, children.Y)
 	} else if c.custom == nil {
 		desired = text(c.text)
 		if c.button {
 			desired.X += 24
 			desired.Y = max(desired.Y, rowHeight)
 		}
-	} else {
-		desired = c.custom.Measure(MeasureContext{
-			Available: rl.Vector2{X: content.Width, Y: content.Height}, MeasureText: text,
-		})
 	}
 	desired.X += box.Padding.Left + box.Padding.Right
 	desired.Y += box.Padding.Top + box.Padding.Bottom
@@ -187,7 +187,8 @@ func (c *component) arrange(slot rl.Rectangle) {
 	c.BaseNode.Place(area)
 	if c.panel != nil {
 		c.panel.arrange(c.children, inset(area, box.Padding))
-	} else if c.custom != nil {
+	}
+	if c.custom != nil {
 		c.layoutBase().slot = slot
 		c.custom.Place(inset(area, box.Padding))
 	}
@@ -231,7 +232,7 @@ func align(start, available, desired float32, limits axisLimits, alignment Align
 }
 
 func (c *component) layoutChanged() bool {
-	if c.measuredBox != c.layoutBase().Box {
+	if c.treeDirty || c.measuredBox != c.layoutBase().Box {
 		return true
 	}
 	for _, child := range c.children {

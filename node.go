@@ -1,6 +1,7 @@
 package rgui
 
 import (
+	"reflect"
 	"rgui/draw"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -24,6 +25,7 @@ type BaseNode struct {
 	bounds  rl.Rectangle
 	slot    rl.Rectangle
 	desired rl.Vector2
+	host    *component
 }
 
 var _ Node = (*BaseNode)(nil)
@@ -70,6 +72,17 @@ func componentOf(node Node) *component {
 	case *component:
 		return node
 	default:
+		value := reflect.ValueOf(node)
+		if value.Kind() == reflect.Pointer && value.IsNil() {
+			return nil
+		}
+		if owner, ok := node.(interface{ layoutBase() *BaseNode }); ok {
+			base := owner.layoutBase()
+			if base.host == nil {
+				base.host = &component{custom: node}
+			}
+			return base.host
+		}
 		return &component{custom: node}
 	}
 }
@@ -77,6 +90,10 @@ func componentOf(node Node) *component {
 type component struct {
 	BaseNode
 	children    []*component
+	parent      *component
+	pending     subscriptions
+	mutable     bool
+	treeDirty   bool
 	readText    func() string
 	onClick     func()
 	button      bool
@@ -126,6 +143,7 @@ func (c *component) enabledButton() bool {
 }
 
 func (c *component) mount(pending subscriptions) {
+	c.pending = pending
 	if c.readText != nil {
 		c.boundText = &binding{
 			evaluate:     func() { c.text = c.readText() },
@@ -147,6 +165,7 @@ func (c *component) unmount() {
 		c.boundText.dispose()
 		c.boundText = nil
 	}
+	c.pending = nil
 }
 
 const (
@@ -170,12 +189,15 @@ func (c *component) buttonAt(point rl.Vector2) *component {
 }
 
 func (c *component) draw(font rl.Font, hovered, pressed, focused *component) {
-	if c.children != nil {
-		for _, child := range c.children {
-			child.draw(font, hovered, pressed, focused)
-		}
-		return
+	if c.custom != nil || c.panel == nil {
+		c.drawSelf(font, hovered, pressed, focused)
 	}
+	for _, child := range c.children {
+		child.draw(font, hovered, pressed, focused)
+	}
+}
+
+func (c *component) drawSelf(font rl.Font, hovered, pressed, focused *component) {
 	if c.bounds.Width <= 0 || c.bounds.Height <= 0 {
 		return
 	}
@@ -193,11 +215,11 @@ func (c *component) draw(font rl.Font, hovered, pressed, focused *component) {
 }
 
 func (c *component) Primitives(ctx PaintContext) []draw.Primitive {
-	if c.panel != nil {
-		return nil
-	}
 	if c.custom != nil {
 		return c.custom.Primitives(ctx)
+	}
+	if c.panel != nil {
+		return nil
 	}
 	style := textStyle(ctx.Font)
 	var primitives []draw.Primitive
