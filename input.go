@@ -141,6 +141,9 @@ func (c *component) inputEnabled() bool {
 }
 
 func hitNode(c *component, point rl.Vector2) *component {
+	if c.popup {
+		return nil
+	}
 	options := c.layoutBase().Input
 	if options.HitTestInvisible {
 		return nil
@@ -166,6 +169,9 @@ func containsPoint(bounds rl.Rectangle, point rl.Vector2) bool {
 func visibleBounds(c *component) rl.Rectangle {
 	bounds := c.bounds
 	for node := c.parent; node != nil; node = node.parent {
+		if node.popup {
+			break
+		}
 		if node.measuredBox.ClipToBounds {
 			bounds = intersectRect(bounds, node.contentBounds())
 		}
@@ -407,6 +413,14 @@ func (r *inputRouter) secondary(kind EventKind, hit *component, point rl.Vector2
 func hitWindow(root *component, mouse, viewport rl.Vector2) *component {
 	if mouse.X < 0 || mouse.Y < 0 || mouse.X >= viewport.X || mouse.Y >= viewport.Y {
 		return nil
+	}
+	layers := popupLayers(root, nil)
+	for i := len(layers) - 1; i >= 0; i-- {
+		if layers[i].inputEnabled() {
+			if hit := hitNode(layers[i].children[0], mouse); hit != nil {
+				return hit
+			}
+		}
 	}
 	return hitNode(root, mouse)
 }

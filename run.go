@@ -195,7 +195,7 @@ func Run(config WindowConfig, view func() Node) error {
 				stats.Painted = true
 				stats.PaintedPixels = int64(pixels.Width) * int64(pixels.Height)
 				retained.update(stats.Damage, settings.background, func(canvas *draw.Canvas) {
-					root.paint(canvas, font, hovered, pressed, focused, &stats.Damage)
+					root.paintScene(canvas, font, hovered, pressed, focused, &stats.Damage)
 				})
 			}
 		} else {
@@ -204,7 +204,7 @@ func Run(config WindowConfig, view func() Node) error {
 			stats.PaintedPixels = int64(window.width) * int64(window.height)
 			rl.ClearBackground(settings.background)
 			canvas := draw.NewCanvas(window.scale, window.height)
-			root.paint(&canvas, font, hovered, pressed, focused, nil)
+			root.paintScene(&canvas, font, hovered, pressed, focused, nil)
 			rl.DrawRenderBatchActive()
 		}
 		stats.Paint = time.Since(start)

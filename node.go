@@ -109,6 +109,7 @@ type component struct {
 	measureValid, placeValid bool
 	panel                    panelLayout
 	legacy                   bool
+	popup                    bool
 	custom                   Node
 	decoration               *BorderStyle
 	visualDamage             rl.Rectangle
@@ -200,6 +201,9 @@ func (c *component) buttonAt(point rl.Vector2) *component {
 }
 
 func (c *component) paint(canvas *draw.Canvas, font rl.Font, hovered, pressed, focused *component, damage *rl.Rectangle) {
+	if c.popup {
+		return
+	}
 	visible := damage == nil || nonempty(intersectRect(c.bounds, *damage))
 	if visible && (c.custom != nil || c.panel == nil || c.decoration != nil) {
 		c.drawSelf(canvas, font, hovered, pressed, focused)
