@@ -8,7 +8,14 @@ import (
 
 // Canvas tracks nested drawing scopes. Use one Canvas per drawing pass.
 type Canvas struct {
-	clip *rl.Rectangle
+	clip              *rl.Rectangle
+	scale             rl.Vector2
+	framebufferHeight int32
+}
+
+// NewCanvas creates a canvas whose clip edges are mapped directly to pixels.
+func NewCanvas(scale rl.Vector2, framebufferHeight int32) Canvas {
+	return Canvas{scale: scale, framebufferHeight: framebufferHeight}
 }
 
 // Clip limits drawing to bounds in screen coordinates, intersected with any
@@ -19,11 +26,11 @@ func (c *Canvas) Clip(bounds rl.Rectangle, paint func()) {
 		bounds = intersect(bounds, *previous)
 	}
 	c.clip = &bounds
-	applyClip(bounds)
+	c.applyClip(bounds)
 	defer func() {
 		c.clip = previous
 		if previous != nil {
-			applyClip(*previous)
+			c.applyClip(*previous)
 		} else {
 			rl.EndScissorMode()
 		}
@@ -37,7 +44,17 @@ func intersect(a, b rl.Rectangle) rl.Rectangle {
 	return rl.Rectangle{X: x, Y: y, Width: max(0, right-x), Height: max(0, bottom-y)}
 }
 
-func applyClip(bounds rl.Rectangle) {
+func (c *Canvas) applyClip(bounds rl.Rectangle) {
+	if c.framebufferHeight > 0 {
+		x := int32(math.Round(float64(bounds.X * c.scale.X)))
+		y := int32(math.Round(float64(bounds.Y * c.scale.Y)))
+		right := int32(math.Round(float64((bounds.X + bounds.Width) * c.scale.X)))
+		bottom := int32(math.Round(float64((bounds.Y + bounds.Height) * c.scale.Y)))
+		rl.DrawRenderBatchActive()
+		rl.EnableScissorTest()
+		rl.Scissor(x, c.framebufferHeight-bottom, max(0, right-x), max(0, bottom-y))
+		return
+	}
 	x, y := math.Ceil(float64(bounds.X)), math.Ceil(float64(bounds.Y))
 	right := math.Floor(float64(bounds.X + bounds.Width))
 	bottom := math.Floor(float64(bounds.Y + bounds.Height))

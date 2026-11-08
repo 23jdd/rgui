@@ -66,17 +66,20 @@ func Run(config WindowConfig, view func() Node) error {
 	var click clickState
 	var focus focusState
 	var input inputRouter
-	var previousViewport rl.Vector2
+	var previousViewport windowViewport
 	style := textStyle(font)
 	measure := func(value string) rl.Vector2 { return draw.MeasureText(value, style) }
 	for !rl.WindowShouldClose() {
 		pruneInput(&click, &focus)
 		input.prune()
-		viewport := rl.Vector2{X: float32(rl.GetScreenWidth()), Y: float32(rl.GetScreenHeight())}
-		if viewport != previousViewport || root.layoutChanged() {
+		window := viewportForPixels(int32(rl.GetRenderWidth()), int32(rl.GetRenderHeight()), rl.GetWindowScaleDPI())
+		viewport := window.size
+		if window != previousViewport || root.layoutChanged() {
+			root.layoutScale = window.scale
 			layoutRoot(root, viewport, measure)
-			previousViewport = viewport
+			previousViewport = window
 		}
+		// raylib already reports the pointer in logical coordinates.
 		mouse := rl.GetMousePosition()
 		active := rl.IsWindowFocused()
 		var hovered *component
@@ -141,7 +144,8 @@ func Run(config WindowConfig, view func() Node) error {
 
 		rl.BeginDrawing()
 		rl.ClearBackground(settings.background)
-		root.draw(font, hovered, pressed, focused)
+		canvas := draw.NewCanvas(window.scale, window.height)
+		root.paint(&canvas, font, hovered, pressed, focused)
 		rl.EndDrawing()
 	}
 	return nil

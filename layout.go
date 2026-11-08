@@ -184,12 +184,17 @@ func (c *component) measure(available rl.Vector2, text measureText) rl.Vector2 {
 }
 
 func (c *component) arrange(slot rl.Rectangle) {
-	if c.placeValid && c.slot == slot {
+	scale := c.layoutScale
+	if c.parent != nil {
+		scale = c.parent.placedScale
+	}
+	if c.placeValid && c.slot == slot && c.placedScale == scale {
 		return
 	}
 	box := c.measuredBox
 	c.slot = slot
 	c.placeValid = true
+	c.placedScale = scale
 	area := inset(slot, box.Margin)
 	width := c.desired.X - box.Margin.Left - box.Margin.Right
 	height := c.desired.Y - box.Margin.Top - box.Margin.Bottom
@@ -197,7 +202,7 @@ func (c *component) arrange(slot rl.Rectangle) {
 	y := layoutLimits(box.Height, box.MinHeight, box.MaxHeight)
 	area.X, area.Width = align(area.X, area.Width, width, x, box.HorizontalAlignment)
 	area.Y, area.Height = align(area.Y, area.Height, height, y, box.VerticalAlignment)
-	c.BaseNode.Place(area)
+	c.BaseNode.Place(snapBounds(area, scale))
 	if c.panel != nil {
 		c.panel.arrange(c.children, c.contentBounds())
 	}

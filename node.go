@@ -104,6 +104,7 @@ type component struct {
 	measuredBox              Box
 	measuredText             string
 	available                rl.Vector2
+	layoutScale, placedScale rl.Vector2
 	measureValid, placeValid bool
 	panel                    panelLayout
 	legacy                   bool
@@ -191,11 +192,6 @@ func (c *component) buttonAt(point rl.Vector2) *component {
 	return nearestButton(hitNode(c, point))
 }
 
-func (c *component) draw(font rl.Font, hovered, pressed, focused *component) {
-	var canvas draw.Canvas
-	c.paint(&canvas, font, hovered, pressed, focused)
-}
-
 func (c *component) paint(canvas *draw.Canvas, font rl.Font, hovered, pressed, focused *component) {
 	if c.custom != nil || c.panel == nil || c.decoration != nil {
 		c.drawSelf(canvas, font, hovered, pressed, focused)
@@ -216,7 +212,7 @@ func (c *component) paint(canvas *draw.Canvas, font rl.Font, hovered, pressed, f
 }
 
 func (c *component) contentBounds() rl.Rectangle {
-	return inset(c.bounds, c.contentInsets(c.measuredBox))
+	return snapBounds(inset(c.bounds, c.contentInsets(c.measuredBox)), c.placedScale)
 }
 
 func (c *component) drawSelf(canvas *draw.Canvas, font rl.Font, hovered, pressed, focused *component) {
