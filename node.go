@@ -171,7 +171,9 @@ func (c *component) mount(pending subscriptions) {
 		c.boundText = custom.bind(pending)
 	}
 	for _, child := range c.children {
-		child.mount(pending)
+		if child.pending == nil {
+			child.mount(pending)
+		}
 	}
 }
 
