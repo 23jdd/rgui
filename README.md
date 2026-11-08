@@ -194,6 +194,8 @@ type Node interface {
 
 在 Windows 上运行 `go run ./examples/ime`，点击输入区，使用中文输入法输入「你好」，检查预编辑、候选窗和提交。示例字体仅加载演示所需的中文字形。设置 `RGUI_WINDOW_TEST=1` 可运行原生窗口消息桥接测试。
 
+`TextBox(value)` 是单行编辑节点，使用 `*Signal[string]` 共享文字。支持鼠标定位与拖选、方向键、Home / End、删除、Shift 选区、Ctrl+A/C/X/V 和横向滚动。IME 提交替换当前选区。Windows IME 示例使用该控件。
+
 布局复用约束和属性未变化的节点结果。对齐变化只使放置失效，尺寸变化同时使测量失效。直接修改 `Box` 仍会被框架检测；自定义节点的内容尺寸改变时可调用 `BaseNode.InvalidateMeasure()`。
 
 运行 `go run ./examples/panels` 查看 `Border`、边缘锚点 `Canvas`、混合轨道跨列和嵌套裁剪。设置 `Box.ClipToBounds` 会用容器的内容矩形裁剪子节点的绘制和命中；圆角属于边框外观。

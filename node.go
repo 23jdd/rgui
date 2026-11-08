@@ -167,6 +167,8 @@ func (c *component) mount(pending subscriptions) {
 			pending:      pending,
 		}
 		c.boundText.evaluateTracked()
+	} else if custom, ok := c.custom.(interface{ bind(subscriptions) *binding }); ok {
+		c.boundText = custom.bind(pending)
 	}
 	for _, child := range c.children {
 		child.mount(pending)
