@@ -1,0 +1,7 @@
+[project]
+name="rgui"
+default="run"
+[run]
+cmds=["go run ./examples/counter"]
+[build]
+cmds=["go build -o demo.exe ./examples/counter"]
