@@ -10,8 +10,8 @@ import (
 )
 
 type testPrimitiveNode struct {
+	BaseNode
 	progress *Signal[float32]
-	bounds   rl.Rectangle
 	calls    []string
 }
 
@@ -22,14 +22,28 @@ func (n *testPrimitiveNode) Measure(ctx MeasureContext) rl.Vector2 {
 
 func (n *testPrimitiveNode) Place(bounds rl.Rectangle) {
 	n.calls = append(n.calls, "place")
-	n.bounds = bounds
+	n.BaseNode.Place(bounds)
 }
 
 func (n *testPrimitiveNode) Primitives(_ PaintContext) []draw.Primitive {
 	n.calls = append(n.calls, "primitives")
-	fill := n.bounds
+	bounds := n.Bounds()
+	fill := bounds
 	fill.Width *= n.progress.Get()
-	return []draw.Primitive{draw.RectPrimitive{Bounds: n.bounds}, draw.RectPrimitive{Bounds: fill}}
+	return []draw.Primitive{draw.RectPrimitive{Bounds: bounds}, draw.RectPrimitive{Bounds: fill}}
+}
+
+func TestBaseNodeDefaults(t *testing.T) {
+	var base BaseNode
+	var node Node = &base
+	if node.Measure(MeasureContext{}) != (rl.Vector2{}) || len(node.Primitives(PaintContext{})) != 0 {
+		t.Fatal("base node should have no preferred size or primitives")
+	}
+	bounds := rl.Rectangle{X: 5, Y: 10, Width: 30, Height: 20}
+	node.Place(bounds)
+	if base.Bounds() != bounds {
+		t.Fatalf("bounds = %+v, want %+v", base.Bounds(), bounds)
+	}
 }
 
 func TestCustomNodeUsesArrangedContentAndCurrentState(t *testing.T) {

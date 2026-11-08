@@ -17,6 +17,27 @@ type Node interface {
 	Primitives(PaintContext) []draw.Primitive
 }
 
+// BaseNode provides default behavior for embedding in a custom node.
+// Its zero value has no preferred size and produces no primitives.
+type BaseNode struct {
+	bounds rl.Rectangle
+}
+
+var _ Node = (*BaseNode)(nil)
+
+// Measure returns a zero desired size. Override it for content-based sizing.
+func (*BaseNode) Measure(MeasureContext) rl.Vector2 { return rl.Vector2{} }
+
+// Place stores the rectangle assigned by layout. Call it when overriding Place
+// if you want Bounds to reflect the assigned rectangle.
+func (n *BaseNode) Place(bounds rl.Rectangle) { n.bounds = bounds }
+
+// Bounds returns the most recent rectangle passed to Place.
+func (n *BaseNode) Bounds() rl.Rectangle { return n.bounds }
+
+// Primitives returns an empty paint list.
+func (*BaseNode) Primitives(PaintContext) []draw.Primitive { return nil }
+
 // MeasureContext supplies the available space and the window's text metrics.
 // An unconstrained dimension is positive infinity. Desired sizes must be finite.
 type MeasureContext struct {
@@ -43,6 +64,7 @@ func componentOf(node Node) *component {
 }
 
 type component struct {
+	BaseNode
 	children  []*component
 	readText  func() string
 	onClick   func()
@@ -50,7 +72,6 @@ type component struct {
 	disabled  bool
 	text      string
 	boundText *binding
-	bounds    rl.Rectangle
 	desired   rl.Vector2
 	box       Box
 	panel     panelLayout

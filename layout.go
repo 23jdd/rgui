@@ -185,7 +185,7 @@ func (c *component) arrange(slot rl.Rectangle) {
 	height := c.desired.Y - box.Margin.Top - box.Margin.Bottom
 	area.X, area.Width = align(area.X, area.Width, width, box.Width, box.HorizontalAlignment)
 	area.Y, area.Height = align(area.Y, area.Height, height, box.Height, box.VerticalAlignment)
-	c.bounds = area
+	c.BaseNode.Place(area)
 	if c.panel != nil {
 		c.panel.arrange(c.children, inset(area, box.Padding))
 	} else if c.custom != nil {

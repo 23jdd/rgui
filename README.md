@@ -148,6 +148,8 @@ type Node interface {
 2. `Place` 接收最终的内容矩形，对应 WPF 的 Arrange。节点可以保存矩形或在此计算内部几何。
 3. `Primitives` 每帧根据最近一次 `Place` 的结果生成图元。框架按切片顺序绘制，并将自定义节点的绘制裁剪到内容区域。
 
+可以在自定义结构体中嵌入 `rgui.BaseNode`，然后用该结构体的指针作为 `Node`。默认 `Place` 保存矩形，绘制时可用 `Bounds()` 读取。默认 `Measure` 返回零尺寸，`Primitives` 返回空列表。进度条只覆盖测量和绘制。
+
 - 内置控件、面板和自定义节点统一使用 `Node`。布局属性通过 `WithLayout(node, box)` 设置，由框架应用到父容器分配的区域，再将内容矩形传给自定义节点的 `Place`。[WPF 布局文档](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/layout)
 - 绘制时可以读取 Signal 的最新值。`Measure` 应依据传入的约束与稳定的尺寸配置计算，读取 Signal 不会单独让布局失效。自定义节点接口当前提供测量和绘制能力。
 - `draw.RectPrimitive` 和 `draw.TextPrimitive` 可直接返回，其他现有图元可通过 `draw.PrimitiveFunc` 加入列表。

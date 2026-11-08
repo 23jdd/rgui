@@ -11,23 +11,20 @@ import (
 )
 
 type progressBar struct {
-	value  *rgui.Signal[float32]
-	bounds rl.Rectangle
+	rgui.BaseNode
+	value *rgui.Signal[float32]
 }
 
 func (p *progressBar) Measure(ctx rgui.MeasureContext) rl.Vector2 {
 	return rl.Vector2{X: min(240, ctx.Available.X), Y: 20}
 }
 
-func (p *progressBar) Place(bounds rl.Rectangle) {
-	p.bounds = bounds
-}
-
 func (p *progressBar) Primitives(_ rgui.PaintContext) []draw.Primitive {
-	fill := p.bounds
+	bounds := p.Bounds()
+	fill := bounds
 	fill.Width *= min(1, max(0, p.value.Get()))
 	return []draw.Primitive{
-		draw.RectPrimitive{Bounds: p.bounds, Radius: 6, Style: draw.Style{Fill: rl.DarkGray}},
+		draw.RectPrimitive{Bounds: bounds, Radius: 6, Style: draw.Style{Fill: rl.DarkGray}},
 		draw.RectPrimitive{Bounds: fill, Radius: 6, Style: draw.Style{Fill: rl.SkyBlue}},
 	}
 }
