@@ -8,7 +8,7 @@ import (
 
 func TestGridToolbarResize(t *testing.T) {
 	label := Text(nil)
-	label.component.text = "Count: 0"
+	componentOf(label).text = "Count: 0"
 	spacer := StackPanel(Vertical, 0)
 	button := Button("+", func() {})
 	root := Grid(
@@ -19,19 +19,19 @@ func TestGridToolbarResize(t *testing.T) {
 	checkBounds(t, label, 0, 0, 80, 48)
 	checkBounds(t, spacer, 80, 0, 160, 48)
 	checkBounds(t, button, 240, 0, 60, 48)
-	label.component.text = "Count: 100"
+	componentOf(label).text = "Count: 100"
 	testLayout(root, 200, 48)
 	checkBounds(t, label, 0, 0, 100, 48)
 	checkBounds(t, spacer, 100, 0, 40, 48)
 	checkBounds(t, button, 140, 0, 60, 48)
-	if root.component.buttonAt(rl.Vector2{X: 175, Y: 24}) != button.component ||
-		root.component.buttonAt(rl.Vector2{X: 250, Y: 24}) != nil {
+	if componentOf(root).buttonAt(rl.Vector2{X: 175, Y: 24}) != componentOf(button) ||
+		componentOf(root).buttonAt(rl.Vector2{X: 250, Y: 24}) != nil {
 		t.Fatal("hit testing should follow the new bounds")
 	}
 	testLayout(root, 120, 48)
 	checkBounds(t, spacer, 100, 0, 0, 48)
 	checkBounds(t, button, 100, 0, 60, 48)
-	if windowButtonAt(root.component, rl.Vector2{X: 125, Y: 24}, rl.Vector2{X: 120, Y: 48}) != nil {
+	if windowButtonAt(componentOf(root), rl.Vector2{X: 125, Y: 24}, rl.Vector2{X: 120, Y: 48}) != nil {
 		t.Fatal("a button outside the viewport should not be hit")
 	}
 }

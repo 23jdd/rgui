@@ -20,7 +20,7 @@ type Docked struct {
 
 // DockPanel consumes space from the chosen edges in declaration order.
 // If lastChildFill is true, the last child receives the remaining rectangle.
-func DockPanel(lastChildFill bool, children ...Docked) Element {
+func DockPanel(lastChildFill bool, children ...Docked) Node {
 	dock := dockLayout{lastChildFill: lastChildFill, edges: make([]DockEdge, len(children))}
 	nodes := make([]Node, len(children))
 	for i, child := range children {
@@ -93,7 +93,7 @@ func (d dockLayout) arrange(children []*component, area rl.Rectangle) {
 
 // WrapPanel arranges children along direction, starting a new line when full.
 // Gap separates both children and lines.
-func WrapPanel(direction Direction, gap float32, children ...Node) Element {
+func WrapPanel(direction Direction, gap float32, children ...Node) Node {
 	return panel(wrapLayout{direction: direction, gap: max(0, gap)}, children)
 }
 

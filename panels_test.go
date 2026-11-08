@@ -3,10 +3,10 @@ package rgui
 import "testing"
 
 func TestDockPanelConsumesEdgesAndFills(t *testing.T) {
-	top := Text(nil).WithLayout(Box{Height: 30})
-	left := Text(nil).WithLayout(Box{Width: 50})
-	bottom := Text(nil).WithLayout(Box{Height: 15})
-	right := Text(nil).WithLayout(Box{Width: 20})
+	top := WithLayout(Text(nil), Box{Height: 30})
+	left := WithLayout(Text(nil), Box{Width: 50})
+	bottom := WithLayout(Text(nil), Box{Height: 15})
+	right := WithLayout(Text(nil), Box{Width: 20})
 	center := Text(nil)
 	root := DockPanel(true,
 		Docked{Edge: DockTop, Child: top}, Docked{Edge: DockLeft, Child: left},
@@ -23,9 +23,9 @@ func TestDockPanelConsumesEdgesAndFills(t *testing.T) {
 
 func TestWrapPanelReflowsInBothDirections(t *testing.T) {
 	for _, direction := range []Direction{Horizontal, Vertical} {
-		first := Text(nil).WithLayout(Box{Width: 40, Height: 40})
-		second := Text(nil).WithLayout(Box{Width: 40, Height: 40})
-		third := Text(nil).WithLayout(Box{Width: 40, Height: 40})
+		first := WithLayout(Text(nil), Box{Width: 40, Height: 40})
+		second := WithLayout(Text(nil), Box{Width: 40, Height: 40})
+		third := WithLayout(Text(nil), Box{Width: 40, Height: 40})
 		root := WrapPanel(direction, 5, first, second, third)
 		testLayout(root, 85, 85)
 		secondAt, thirdAt := direction.size(45, 0), direction.size(0, 45)

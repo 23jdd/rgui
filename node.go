@@ -31,22 +31,12 @@ type PaintContext struct {
 	hovered, pressed, focused bool
 }
 
-// Element is a built-in node, or a custom Node with layout options attached.
-type Element struct {
-	component *component
-}
-
 func componentOf(node Node) *component {
 	switch node := node.(type) {
 	case nil:
 		return nil
-	case Element:
-		return node.component
-	case *Element:
-		if node == nil {
-			return nil
-		}
-		return node.component
+	case *component:
+		return node
 	default:
 		return &component{custom: node}
 	}
@@ -69,26 +59,28 @@ type component struct {
 }
 
 // Stack lays out its children vertically in declaration order.
-func Stack(children ...Node) Element {
-	stack := StackPanel(Vertical, stackGap, children...)
-	stack.component.legacy = true
+func Stack(children ...Node) Node {
+	stack := panel(stackLayout{direction: Vertical, gap: stackGap}, children)
+	stack.legacy = true
 	return stack
 }
 
 // Text displays the result of read. The callback should only compute text.
-func Text(read func() string) Element {
-	return Element{&component{readText: read}}
+func Text(read func() string) Node {
+	return &component{readText: read}
 }
 
 // Button calls onClick on a completed mouse click or keyboard activation.
-func Button(label string, onClick func()) Element {
-	return Element{&component{text: label, button: true, onClick: onClick}}
+func Button(label string, onClick func()) Node {
+	return &component{text: label, button: true, onClick: onClick}
 }
 
-// WithDisabled sets whether this button accepts input. Use it on the UI thread.
-func (n Element) WithDisabled(disabled bool) Element {
-	n.component.disabled = disabled
-	return n
+// WithDisabled configures whether a button accepts input. Use it on the UI thread.
+func WithDisabled(node Node, disabled bool) Node {
+	if c, ok := node.(*component); ok && c.button {
+		c.disabled = disabled
+	}
+	return node
 }
 
 func (c *component) enabledButton() bool {
@@ -153,7 +145,7 @@ func (c *component) draw(font rl.Font, hovered, pressed, focused *component) {
 		Font:    font,
 		hovered: c == hovered, pressed: c == pressed, focused: c == focused,
 	}
-	primitives := Element{c}.Primitives(ctx)
+	primitives := c.Primitives(ctx)
 	if c.custom != nil {
 		var canvas draw.Canvas
 		canvas.Clip(inset(c.bounds, c.box.Padding), func() { draw.Render(primitives) })
@@ -162,11 +154,8 @@ func (c *component) draw(font rl.Font, hovered, pressed, focused *component) {
 	draw.Render(primitives)
 }
 
-// Primitives returns the element's own paint list. Panels paint their children
-// through the view tree.
-func (n Element) Primitives(ctx PaintContext) []draw.Primitive {
-	c := n.component
-	if c == nil || c.panel != nil {
+func (c *component) Primitives(ctx PaintContext) []draw.Primitive {
+	if c.panel != nil {
 		return nil
 	}
 	if c.custom != nil {

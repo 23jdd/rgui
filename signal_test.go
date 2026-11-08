@@ -9,36 +9,36 @@ func TestTextBindingLifecycle(t *testing.T) {
 	left, right := NewSignal(0), NewSignal(7)
 	useRight := NewSignal(false)
 	evaluations, unrelatedEvaluations := 0, 0
-	label := Text(func() string {
+	label := componentOf(Text(func() string {
 		evaluations++
 		if useRight.Get() {
 			return fmt.Sprint(right.Get())
 		}
 		return fmt.Sprint(left.Get())
-	})
-	root := Stack(label, Text(func() string {
+	}))
+	root := componentOf(Stack(label, Text(func() string {
 		unrelatedEvaluations++
 		return "static"
-	})).component
+	})))
 	pending := make(subscriptions)
 	root.mount(pending)
-	if label.component.text != "0" || evaluations != 1 {
+	if label.text != "0" || evaluations != 1 {
 		t.Fatal("mount did not evaluate the initial label once")
 	}
 
 	left.Set(1)
 	left.Set(2)
-	if left.Get() != 2 || label.component.text != "0" {
+	if left.Get() != 2 || label.text != "0" {
 		t.Fatal("Set should update the signal immediately and defer the label update")
 	}
 	flushBindings(pending)
-	if label.component.text != "2" || evaluations != 2 || unrelatedEvaluations != 1 {
+	if label.text != "2" || evaluations != 2 || unrelatedEvaluations != 1 {
 		t.Fatal("frame should evaluate only the affected binding, once")
 	}
 
 	useRight.Set(true)
 	flushBindings(pending)
-	if label.component.text != "7" {
+	if label.text != "7" {
 		t.Fatal("label did not switch dependencies")
 	}
 	left.Set(3)
@@ -49,14 +49,14 @@ func TestTextBindingLifecycle(t *testing.T) {
 	root.unmount()
 	right.Set(9)
 	flushBindings(pending)
-	if label.component.text != "7" || evaluations != 3 || len(pending) != 0 {
+	if label.text != "7" || evaluations != 3 || len(pending) != 0 {
 		t.Fatal("unmount should discard queued updates and unsubscribe")
 	}
 }
 
 func TestClickRequiresMatchingPressAndRelease(t *testing.T) {
 	count := 0
-	button := Button("+1", func() { count++ }).component
+	button := componentOf(Button("+1", func() { count++ }))
 	var click clickState
 	click.update(button, true, false)
 	click.update(button, false, false)

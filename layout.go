@@ -42,27 +42,21 @@ type Box struct {
 	HorizontalAlignment, VerticalAlignment Alignment
 }
 
-// WithLayout configures this node and returns it for use in a view expression.
-func (n Element) WithLayout(box Box) Element {
-	n.component.box = box
-	return n
-}
-
 // WithLayout attaches layout options to a built-in or custom node.
-func WithLayout(node Node, box Box) Element {
-	return Element{componentOf(node)}.WithLayout(box)
+func WithLayout(node Node, box Box) Node {
+	c := componentOf(node)
+	c.box = box
+	return c
 }
 
 type measureText func(string) rl.Vector2
 
-// Measure returns the element's desired size, including its margin.
-func (n Element) Measure(ctx MeasureContext) rl.Vector2 {
-	return n.component.measure(ctx.Available, ctx.MeasureText)
+func (c *component) Measure(ctx MeasureContext) rl.Vector2 {
+	return c.measure(ctx.Available, ctx.MeasureText)
 }
 
-// Place arranges the element inside the given slot, applying layout options.
-func (n Element) Place(slot rl.Rectangle) {
-	n.component.arrange(slot)
+func (c *component) Place(slot rl.Rectangle) {
+	c.arrange(slot)
 }
 
 type panelLayout interface {
@@ -70,7 +64,7 @@ type panelLayout interface {
 	arrange(children []*component, area rl.Rectangle)
 }
 
-func panel(layout panelLayout, children []Node) Element {
+func panel(layout panelLayout, children []Node) *component {
 	node := &component{panel: layout, children: make([]*component, len(children))}
 	for i, child := range children {
 		node.children[i] = componentOf(child)
@@ -78,11 +72,11 @@ func panel(layout panelLayout, children []Node) Element {
 			panic("rgui: panel child is nil")
 		}
 	}
-	return Element{node}
+	return node
 }
 
 // StackPanel arranges children in declaration order along direction.
-func StackPanel(direction Direction, gap float32, children ...Node) Element {
+func StackPanel(direction Direction, gap float32, children ...Node) Node {
 	return panel(stackLayout{direction: direction, gap: max(0, gap)}, children)
 }
 
@@ -231,13 +225,12 @@ func layoutRoot(root *component, viewport rl.Vector2, text measureText) {
 		area.Y = 36
 		area.Height = max(0, viewport.Y-area.Y)
 	}
-	element := Element{root}
-	element.Measure(MeasureContext{Available: rl.Vector2{X: area.Width, Y: area.Height}, MeasureText: text})
+	root.Measure(MeasureContext{Available: rl.Vector2{X: area.Width, Y: area.Height}, MeasureText: text})
 	if root.panel == nil && root.custom == nil {
 		area.Height = root.desired.Y
 		if root.box.Height <= 0 {
 			area.Height = max(rowHeight, area.Height)
 		}
 	}
-	element.Place(area)
+	root.Place(area)
 }

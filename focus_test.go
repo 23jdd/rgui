@@ -8,7 +8,7 @@ import (
 
 func TestFocusTraversal(t *testing.T) {
 	first := Button("First", func() {})
-	disabled := Button("Disabled", func() {}).WithDisabled(true)
+	disabled := WithDisabled(Button("Disabled", func() {}), true)
 	last := Button("Last", func() {})
 	outside := Button("Outside", func() {})
 	root := StackPanel(Vertical, 0, first, Stack(disabled, last), outside)
@@ -17,7 +17,7 @@ func TestFocusTraversal(t *testing.T) {
 	var focus focusState
 	for _, step := range []struct {
 		backward bool
-		want     Element
+		want     Node
 	}{
 		{false, first},
 		{false, last},
@@ -25,12 +25,12 @@ func TestFocusTraversal(t *testing.T) {
 		{true, last},
 		{true, first},
 	} {
-		focus.move(root.component, viewport, step.backward)
-		if focus.button != step.want.component {
-			t.Fatalf("unexpected focus, want %s", step.want.component.text)
+		focus.move(componentOf(root), viewport, step.backward)
+		if focus.button != componentOf(step.want) {
+			t.Fatalf("unexpected focus, want %s", componentOf(step.want).text)
 		}
 	}
-	if root.component.buttonAt(rl.Vector2{X: 20, Y: 60}) != nil {
+	if componentOf(root).buttonAt(rl.Vector2{X: 20, Y: 60}) != nil {
 		t.Fatal("disabled button should not accept mouse input")
 	}
 }
@@ -39,7 +39,7 @@ func TestKeyboardActivationAndCancellation(t *testing.T) {
 	count := 0
 	button := Button("Count", func() { count++ })
 	var focus focusState
-	focus.set(button.component)
+	focus.set(componentOf(button))
 	focus.activate(rl.KeySpace, true, false)
 	focus.activate(rl.KeySpace, false, false)
 	focus.activate(rl.KeyEnter, false, true)
@@ -55,11 +55,11 @@ func TestKeyboardActivationAndCancellation(t *testing.T) {
 	focus.cancelPress()
 	focus.activate(rl.KeyEnter, false, true)
 	focus.activate(rl.KeySpace, true, false)
-	focus.set(Button("Other", func() { count++ }).component)
+	focus.set(componentOf(Button("Other", func() { count++ })))
 	focus.activate(rl.KeySpace, false, true)
-	focus.set(button.component)
+	focus.set(componentOf(button))
 	focus.activate(rl.KeyEnter, true, false)
-	button.WithDisabled(true)
+	WithDisabled(button, true)
 	focus.activate(rl.KeyEnter, false, true)
 	if count != 1 {
 		t.Fatal("cancelled, moved or disabled focus must not activate on release")

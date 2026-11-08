@@ -116,7 +116,7 @@ go run ./examples/primitives
 - **Grid** 首批支持单单元格定位。固定轨道先预留，`Auto` 轨道取该轨道内子节点所需尺寸的最大值，`Star` 轨道按权重分配非负剩余空间。跨行、跨列留到后续。首版用窗口裁剪布局溢出，绘制和命中采用相同边界。[WPF Grid 自动布局](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/how-to-use-a-grid-for-automatic-layout)
 - **Signal 与布局**。文本绑定更新导致期望尺寸变化时，在绘制前重新测量和排列受影响的布局。窗口尺寸变化时，在处理鼠标命中前刷新布局。首版允许重算整棵树，按节点缓存测量结果留到后续。
 
-第一批提供 `StackPanel(Vertical, gap, children...)` 和 `StackPanel(Horizontal, gap, children...)`。用 `node.WithLayout(Box{...})` 设置宽高、外边距、内边距和两个方向的对齐。宽高为零时按内容测量，默认对齐为拉伸。`Stack` 保留原有的固定行高和根容器宽度。
+第一批提供 `StackPanel(Vertical, gap, children...)` 和 `StackPanel(Horizontal, gap, children...)`。用 `WithLayout(node, Box{...})` 设置宽高、外边距、内边距和两个方向的对齐。宽高为零时按内容测量，默认对齐为拉伸。`Stack` 保留原有的固定行高和根容器宽度。
 
 第二批用 `Grid(rows, columns, cells...)` 指定行列轨道和子节点，`Cell.Row` 和 `Cell.Column` 从零开始。轨道用 `Fixed(pixels)`、`Auto()` 或 `Star(weight)` 定义。沿未限制尺寸的轴，正权重的 `Star` 轨道按内容测量。
 
@@ -128,7 +128,7 @@ go run ./examples/primitives
 
 - 点击可用按钮时取得焦点。按 Tab 或 Shift+Tab 按组件声明顺序循环切换，跳过禁用和完全位于窗口外的按钮。焦点按钮显示金色边框。
 - 聚焦按钮在释放 Space 或 Enter 时执行同一个点击回调。按住时不会连发，切换焦点或窗口失焦会取消未完成的按键操作。窗口失焦也会取消未完成的鼠标点击。
-- 使用 `button.WithDisabled(true)` 禁用按钮。布局示例中的 `Item 6` 用于验证禁用行为。
+- 使用 `WithDisabled(button, true)` 禁用按钮。布局示例中的 `Item 6` 用于验证禁用行为。
 
 运行 `go run ./examples/layout`。按两次 Tab 选中「+」，按 Space 加一，再用 Tab 切到 `Reset`，按 Enter 清零。
 
@@ -148,7 +148,7 @@ type Node interface {
 2. `Place` 接收最终的内容矩形，对应 WPF 的 Arrange。节点可以保存矩形或在此计算内部几何。
 3. `Primitives` 每帧根据最近一次 `Place` 的结果生成图元。框架按切片顺序绘制，并将自定义节点的绘制裁剪到内容区域。
 
-- 内置构造函数返回实现了 `Node` 的 `Element`，仍可链式调用 `WithLayout` 和 `WithDisabled`。持有 `Node` 接口值时，用包级的 `rgui.WithLayout`。
+- 内置控件、面板和自定义节点统一使用 `Node`。布局属性通过 `WithLayout(node, box)` 设置，由框架应用到父容器分配的区域，再将内容矩形传给自定义节点的 `Place`。[WPF 布局文档](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/layout)
 - 绘制时可以读取 Signal 的最新值。`Measure` 应依据传入的约束与稳定的尺寸配置计算，读取 Signal 不会单独让布局失效。自定义节点接口当前提供测量和绘制能力。
 - `draw.RectPrimitive` 和 `draw.TextPrimitive` 可直接返回，其他现有图元可通过 `draw.PrimitiveFunc` 加入列表。
 
