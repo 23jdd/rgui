@@ -120,9 +120,20 @@ go run ./examples/primitives
 
 ## 自定义节点
 
-`rgui.Node` 是 Go 接口。实现 `Primitives(rgui.PaintContext) []draw.Primitive` 即可在任意现有面板中放入自定义节点，也可以直接从 `View` 返回。每帧由框架传入布局完成后的内容区域和默认字体，再按切片顺序绘制。自定义节点的绘制裁剪到其内容区域。
+`rgui.Node` 有三个阶段。自定义节点可放进现有面板，也可直接从 `View` 返回。
 
-- 可选的 `Measure(available rl.Vector2) rl.Vector2` 返回内容期望尺寸，输入的宽高可能是正无穷。没有实现测量的节点可通过 `rgui.WithLayout(node, rgui.Box{...})` 指定尺寸，也可由父容器分配空间。
+```go
+type Node interface {
+    Measure(MeasureContext) rl.Vector2
+    Place(rl.Rectangle)
+    Primitives(PaintContext) []draw.Primitive
+}
+```
+
+1. `Measure` 接收可用空间和默认字体的文字测量函数，返回内容的期望尺寸。可用宽高可能是正无穷。一次布局可能测量同一节点多次。
+2. `Place` 接收最终的内容矩形，对应 WPF 的 Arrange。节点可以保存矩形或在此计算内部几何。
+3. `Primitives` 每帧根据最近一次 `Place` 的结果生成图元。框架按切片顺序绘制，并将自定义节点的绘制裁剪到内容区域。
+
 - 内置构造函数返回实现了 `Node` 的 `Element`，仍可链式调用 `WithLayout` 和 `WithDisabled`。持有 `Node` 接口值时，用包级的 `rgui.WithLayout`。
 - 绘制时可以读取 Signal 的最新值。`Measure` 应依据传入的约束与稳定的尺寸配置计算，读取 Signal 不会单独让布局失效。自定义节点接口当前提供测量和绘制能力。
 - `draw.RectPrimitive` 和 `draw.TextPrimitive` 可直接返回，其他现有图元可通过 `draw.PrimitiveFunc` 加入列表。

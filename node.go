@@ -6,25 +6,29 @@ import (
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-// Node returns the primitives to paint, in back-to-front order.
-// Create a new node for each position in the tree. Primitives may read current
-// state and should describe drawing without changing application state.
+// Node participates in measurement, placement, and painting.
+// Create a new node for each position in the tree.
 type Node interface {
+	// Measure returns the desired size under the given constraints.
+	Measure(MeasureContext) rl.Vector2
+	// Place receives the final rectangle. A custom node receives its content area.
+	Place(rl.Rectangle)
+	// Primitives returns a paint list in back-to-front order, without changing application state.
 	Primitives(PaintContext) []draw.Primitive
 }
 
-// PaintContext supplies the arranged content bounds and the window's default font.
-type PaintContext struct {
-	Bounds rl.Rectangle
-	Font   rl.Font
-
-	hovered, pressed, focused bool
+// MeasureContext supplies the available space and the window's text metrics.
+// An unconstrained dimension is positive infinity. Desired sizes must be finite.
+type MeasureContext struct {
+	Available   rl.Vector2
+	MeasureText func(string) rl.Vector2
 }
 
-// Measurable optionally supplies a custom node's desired size before padding.
-// The available dimensions may be infinite. Return a finite size.
-type Measurable interface {
-	Measure(available rl.Vector2) rl.Vector2
+// PaintContext supplies the window's default font.
+type PaintContext struct {
+	Font rl.Font
+
+	hovered, pressed, focused bool
 }
 
 // Element is a built-in node, or a custom Node with layout options attached.
@@ -146,14 +150,13 @@ func (c *component) draw(font rl.Font, hovered, pressed, focused *component) {
 		return
 	}
 	ctx := PaintContext{
-		Bounds:  c.bounds,
 		Font:    font,
 		hovered: c == hovered, pressed: c == pressed, focused: c == focused,
 	}
 	primitives := Element{c}.Primitives(ctx)
 	if c.custom != nil {
 		var canvas draw.Canvas
-		canvas.Clip(inset(ctx.Bounds, c.box.Padding), func() { draw.Render(primitives) })
+		canvas.Clip(inset(c.bounds, c.box.Padding), func() { draw.Render(primitives) })
 		return
 	}
 	draw.Render(primitives)
@@ -167,7 +170,6 @@ func (n Element) Primitives(ctx PaintContext) []draw.Primitive {
 		return nil
 	}
 	if c.custom != nil {
-		ctx.Bounds = inset(ctx.Bounds, c.box.Padding)
 		return c.custom.Primitives(ctx)
 	}
 	style := textStyle(ctx.Font)
@@ -183,15 +185,15 @@ func (n Element) Primitives(ctx PaintContext) []draw.Primitive {
 		case ctx.hovered:
 			fill = rl.Blue
 		}
-		primitives = append(primitives, draw.RectPrimitive{Bounds: ctx.Bounds, Style: draw.Style{Fill: fill}})
+		primitives = append(primitives, draw.RectPrimitive{Bounds: c.bounds, Style: draw.Style{Fill: fill}})
 		if ctx.focused {
 			primitives = append(primitives, draw.RectPrimitive{
-				Bounds: inset(ctx.Bounds, UniformInsets(2)),
+				Bounds: inset(c.bounds, UniformInsets(2)),
 				Style:  draw.Style{Stroke: draw.Stroke{Color: rl.Gold, Width: 2}},
 			})
 		}
 	}
-	content := inset(ctx.Bounds, c.box.Padding)
+	content := inset(c.bounds, c.box.Padding)
 	size := draw.MeasureText(c.text, style)
 	text := draw.TextPrimitive{
 		Position: rl.Vector2{

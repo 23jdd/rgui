@@ -55,6 +55,16 @@ func WithLayout(node Node, box Box) Element {
 
 type measureText func(string) rl.Vector2
 
+// Measure returns the element's desired size, including its margin.
+func (n Element) Measure(ctx MeasureContext) rl.Vector2 {
+	return n.component.measure(ctx.Available, ctx.MeasureText)
+}
+
+// Place arranges the element inside the given slot, applying layout options.
+func (n Element) Place(slot rl.Rectangle) {
+	n.component.arrange(slot)
+}
+
 type panelLayout interface {
 	measure(children []*component, available rl.Vector2, text measureText) rl.Vector2
 	arrange(children []*component, area rl.Rectangle)
@@ -155,8 +165,10 @@ func (c *component) measure(available rl.Vector2, text measureText) rl.Vector2 {
 			desired.X += 24
 			desired.Y = max(desired.Y, rowHeight)
 		}
-	} else if node, ok := c.custom.(Measurable); ok {
-		desired = node.Measure(rl.Vector2{X: content.Width, Y: content.Height})
+	} else {
+		desired = c.custom.Measure(MeasureContext{
+			Available: rl.Vector2{X: content.Width, Y: content.Height}, MeasureText: text,
+		})
 	}
 	desired.X += box.Padding.Left + box.Padding.Right
 	desired.Y += box.Padding.Top + box.Padding.Bottom
@@ -182,6 +194,8 @@ func (c *component) arrange(slot rl.Rectangle) {
 	c.bounds = area
 	if c.panel != nil {
 		c.panel.arrange(c.children, inset(area, box.Padding))
+	} else if c.custom != nil {
+		c.custom.Place(inset(area, box.Padding))
 	}
 }
 
@@ -217,12 +231,13 @@ func layoutRoot(root *component, viewport rl.Vector2, text measureText) {
 		area.Y = 36
 		area.Height = max(0, viewport.Y-area.Y)
 	}
-	root.measure(rl.Vector2{X: area.Width, Y: area.Height}, text)
+	element := Element{root}
+	element.Measure(MeasureContext{Available: rl.Vector2{X: area.Width, Y: area.Height}, MeasureText: text})
 	if root.panel == nil && root.custom == nil {
 		area.Height = root.desired.Y
 		if root.box.Height <= 0 {
 			area.Height = max(rowHeight, area.Height)
 		}
 	}
-	root.arrange(area)
+	element.Place(area)
 }
