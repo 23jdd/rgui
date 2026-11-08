@@ -88,6 +88,22 @@ go run ./examples/primitives
 - 线性渐变用于矩形，径向渐变用于圆形，软阴影用于圆角矩形。虚线沿描边路径连续计算。
 - `Image` 和 `NinePatch` 接收调用方持有的 raylib 纹理，调用方负责加载和释放。
 
+## 下一里程碑：布局系统
+
+参考 WPF 的两阶段模型。父容器用 `Measure(available)` 询问子节点在给定空间下的期望尺寸，再用 `Arrange(slot)` 分配最终位置和大小。绘制与鼠标命中使用同一份最终布局结果。[WPF 布局文档](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/layout)
+
+| 批次 | 范围 | 验收条件 |
+| --- | --- | --- |
+| 1. 布局基础与 StackPanel | 横排和竖排、`Margin`、`Padding`、`Gap`、宽高与对齐 | 同一组节点切换排列方向后顺序正确。文字按字体实际尺寸测量，显式宽高优先，居中和拉伸使用父容器分配的区域。现有计数器通过兼容的 `Stack` 入口保持原布局。 |
+| 2. Grid | 行列支持固定逻辑像素、`Auto` 和带权重的 `Star` | 工具栏用 `Auto / 1* / 固定` 三列验证内容列、弹性空白和固定按钮区。另用 `1* / 2*` 验证剩余空间按 1:2 分配。缩放窗口后点击位置跟随按钮。 |
+| 3. 补充面板 | `DockPanel`、`WrapPanel`，按示例验证 | Dock 布局中的工具栏贴边，主区域填满剩余空间。Wrap 布局随窗口变窄换行。 |
+
+- **StackPanel** 在排列轴上按内容测量子节点，横轴按父容器可用空间安排。带权重的剩余空间分配放在 Grid。[WPF StackPanel 与 DockPanel 比较](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/controls/how-to-choose-between-stackpanel-and-dockpanel)
+- **Grid** 首批支持单单元格定位。固定轨道先预留，`Auto` 轨道取该轨道内子节点所需尺寸的最大值，`Star` 轨道按权重分配非负剩余空间。跨行、跨列留到后续。首版用窗口裁剪布局溢出，绘制和命中采用相同边界。[WPF Grid 自动布局](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/advanced/how-to-use-a-grid-for-automatic-layout)
+- **Signal 与布局**。文本绑定更新导致期望尺寸变化时，在绘制前重新测量和排列受影响的布局。窗口尺寸变化时，在处理鼠标命中前刷新布局。首版允许重算整棵树，按节点缓存测量结果留到后续。
+
+第一批使用 Go 构造函数，公开类型与调用形式随示例确定。布局算法用无需打开窗口的测试验证，窗口缩放和命中行为用 `examples/layout` 工具栏验证。
+
 ## 每次改动的工作流
 
 1. 选一条验收条件，写清触发动作和预期结果。涉及公开 API 时，先写期望的调用代码。
